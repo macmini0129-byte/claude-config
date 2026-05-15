@@ -312,6 +312,59 @@
     display: flex; justify-content: space-between; padding: 6px 4px 0; font-size: 11px; color: var(--text-muted);
   }
 
+  /* Tasks */
+  .task-input-row {
+    display: flex; gap: 8px; margin-bottom: 12px;
+  }
+  .task-input-row input {
+    flex: 1; background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 9px 12px;
+    color: var(--text); font-size: 13px; font-family: var(--font);
+  }
+  .task-input-row input:focus { outline: none; border-color: var(--accent); }
+  .task-list { max-height: 50vh; overflow-y: auto; }
+  .task-list::-webkit-scrollbar { width: 6px; }
+  .task-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  .task-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-bottom: 1px solid var(--border);
+    transition: background .15s;
+  }
+  .task-item:hover { background: var(--surface-hover); }
+  .task-item:last-child { border-bottom: none; }
+  .task-check {
+    width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border);
+    cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    transition: all .2s; font-size: 12px; color: transparent;
+  }
+  .task-check.done { border-color: #4ade80; background: #064e3b; color: #4ade80; }
+  .task-check.pending { border-color: var(--text-muted); }
+  .task-check.in_progress { border-color: #fbbf24; }
+  .task-body { flex: 1; min-width: 0; }
+  .task-body .task-title { font-size: 13px; color: var(--text); }
+  .task-body .task-title.done { text-decoration: line-through; color: var(--text-muted); }
+  .task-body .task-desc { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .task-body .task-meta { font-size: 10px; color: var(--text-muted); margin-top: 4px; }
+  .task-del {
+    background: none; border: none; color: var(--text-muted); cursor: pointer;
+    font-size: 16px; padding: 4px; opacity: 0; transition: all .15s;
+  }
+  .task-item:hover .task-del { opacity: 1; }
+  .task-del:hover { color: var(--danger); }
+  .task-filters {
+    display: flex; gap: 6px; margin-bottom: 12px;
+  }
+  .task-filter {
+    font-size: 12px; padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border);
+    background: transparent; color: var(--text-muted); cursor: pointer;
+    font-family: var(--font); transition: all .15s;
+  }
+  .task-filter:hover { border-color: var(--accent); color: var(--text); }
+  .task-filter.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .task-count {
+    font-size: 11px; color: var(--text-muted); text-align: center; padding: 8px;
+  }
+
   /* Skills */
   .skills-grid {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -437,6 +490,7 @@
       <span class="model-badge" id="modelBadge">加载中...</span>
     </div>
     <div class="header-actions">
+      <button class="btn-icon" onclick="openTasks()" title="任务">&#x2611;</button>
       <button class="btn-icon" onclick="openSkills()" title="技能">&#x1F9E0;</button>
       <button class="btn-icon" onclick="openSettings()" title="设置">&#x2699;</button>
       <button class="btn-icon" onclick="clearChat()" title="新对话">&#x2795;</button>
@@ -450,6 +504,25 @@
       <h2 id="skillsTitle">技能管理</h2>
       <input type="text" class="skills-search" id="skillsSearch" placeholder="搜索技能..." oninput="renderSkills()">
       <div id="skillsContent"></div>
+    </div>
+  </div>
+
+  <!-- Tasks Modal -->
+  <div class="modal-overlay" id="tasksModal">
+    <div class="modal" style="max-width:520px">
+      <button class="modal-close" onclick="closeTasks()">&times;</button>
+      <h2>任务管理 <span style="font-size:12px;color:var(--text-muted);font-weight:400" id="taskStatusCount"></span></h2>
+      <div class="task-input-row">
+        <input type="text" id="taskInput" placeholder="添加新任务..." onkeydown="if(event.key==='Enter') addTask()">
+        <button class="btn-primary" onclick="addTask()" style="padding:8px 16px">添加</button>
+      </div>
+      <div class="task-filters" id="taskFilters">
+        <button class="task-filter active" data-filter="all" onclick="setTaskFilter('all')">全部</button>
+        <button class="task-filter" data-filter="pending" onclick="setTaskFilter('pending')">待办</button>
+        <button class="task-filter" data-filter="in_progress" onclick="setTaskFilter('in_progress')">进行中</button>
+        <button class="task-filter" data-filter="done" onclick="setTaskFilter('done')">已完成</button>
+      </div>
+      <div class="task-list" id="taskList"></div>
     </div>
   </div>
 
@@ -916,6 +989,100 @@ function renderSkillsWithAdd() {
   loadUserSkills();
   renderSkills();
   // We append add button after grid
+}
+
+// ============ Tasks ============
+let tasks = [];
+let taskFilter = 'all';
+
+function loadTasks() {
+  try { tasks = JSON.parse(localStorage.getItem('claude-web-tasks') || '[]'); } catch(e) { tasks = []; }
+}
+function saveTasks() {
+  localStorage.setItem('claude-web-tasks', JSON.stringify(tasks));
+}
+
+function openTasks() {
+  loadTasks();
+  renderTasks();
+  document.getElementById('tasksModal').classList.add('show');
+  setTimeout(() => document.getElementById('taskInput').focus(), 100);
+}
+
+function closeTasks() {
+  document.getElementById('tasksModal').classList.remove('show');
+}
+
+function addTask() {
+  const input = document.getElementById('taskInput');
+  const title = input.value.trim();
+  if (!title) return;
+  tasks.push({
+    id: Date.now().toString(36),
+    title,
+    description: '',
+    status: 'pending',
+    createdAt: new Date().toISOString(),
+  });
+  saveTasks();
+  input.value = '';
+  renderTasks();
+  input.focus();
+}
+
+function toggleTask(id) {
+  const task = tasks.find(t => t.id === id);
+  if (!task) return;
+  if (task.status === 'done') task.status = 'pending';
+  else if (task.status === 'pending') task.status = 'in_progress';
+  else task.status = 'done';
+  saveTasks();
+  renderTasks();
+}
+
+function deleteTask(id) {
+  tasks = tasks.filter(t => t.id !== id);
+  saveTasks();
+  renderTasks();
+}
+
+function setTaskFilter(filter) {
+  taskFilter = filter;
+  document.querySelectorAll('.task-filter').forEach(b => {
+    b.classList.toggle('active', b.dataset.filter === filter);
+  });
+  renderTasks();
+}
+
+function renderTasks() {
+  const filtered = taskFilter === 'all'
+    ? tasks
+    : tasks.filter(t => t.status === taskFilter);
+
+  const total = tasks.length;
+  const done = tasks.filter(t => t.status === 'done').length;
+  document.getElementById('taskStatusCount').textContent = `(${done}/${total})`;
+
+  const list = document.getElementById('taskList');
+
+  if (filtered.length === 0) {
+    list.innerHTML = '<div class="task-count">' + (taskFilter === 'all' ? '还没有任务，添加一个吧' : '没有匹配的任务') + '</div>';
+    return;
+  }
+
+  list.innerHTML = filtered.map(t => {
+    const statusIcon = t.status === 'done' ? '&#x2713;' : t.status === 'in_progress' ? '&#x25D0;' : '';
+    const checkClass = t.status === 'done' ? 'done' : t.status === 'in_progress' ? 'in_progress' : 'pending';
+    const statusLabel = t.status === 'done' ? '已完成' : t.status === 'in_progress' ? '进行中' : '待办';
+    return `<div class="task-item">
+      <div class="task-check ${checkClass}" onclick="toggleTask('${t.id}')">${statusIcon}</div>
+      <div class="task-body">
+        <div class="task-title ${t.status === 'done' ? 'done' : ''}">${escapeHtml(t.title)}</div>
+        <div class="task-meta">${statusLabel}</div>
+      </div>
+      <button class="task-del" onclick="deleteTask('${t.id}')">&times;</button>
+    </div>`;
+  }).join('');
 }
 
 // ============ File Upload ============
