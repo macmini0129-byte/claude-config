@@ -20,6 +20,10 @@
     --danger: #f87171;
     --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
     --font-mono: 'SF Mono', 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+
+    --file-chip-bg: #1e1b4b;
+    --file-chip-border: #312e81;
+    --file-icon-color: #a78bfa;
     --radius: 12px;
     --radius-sm: 8px;
     --radius-lg: 16px;
@@ -36,6 +40,17 @@
   html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); -webkit-font-smoothing: antialiased; }
 
   .app { display: flex; flex-direction: column; height: 100vh; max-width: 840px; margin: 0 auto; position: relative; }
+
+  /* Drag & drop overlay */
+  .drop-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(10,10,12,0.85); border: 2px dashed var(--accent);
+    border-radius: 0; z-index: 1000;
+    display: none; align-items: center; justify-content: center;
+    pointer-events: none;
+  }
+  .drop-overlay.show { display: flex; }
+  .drop-overlay span { font-size: 18px; color: var(--accent); font-weight: 500; }
 
   /* Toast notification */
   .toast {
@@ -242,7 +257,28 @@
   @keyframes blink { 50% { opacity: 0; } }
 
   /* Input Area */
-  .input-area { padding: 12px 20px 20px; flex-shrink: 0; background: linear-gradient(transparent, var(--bg) 30%); }
+  /* File chips */
+  .file-chips {
+    display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 4px 4px; flex-shrink: 0;
+  }
+  .file-chip {
+    display: flex; align-items: center; gap: 5px;
+    background: var(--file-chip-bg); border: 1px solid var(--file-chip-border);
+    border-radius: 6px; padding: 3px 8px; font-size: 12px;
+    color: var(--file-icon-color); max-width: 200px;
+  }
+  .file-chip .filename {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;
+  }
+  .file-chip .filesize { color: var(--text-muted); flex-shrink: 0; }
+  .file-chip .remove-file {
+    background: none; border: none; color: var(--text-muted); cursor: pointer;
+    font-size: 14px; padding: 0 2px; line-height: 1;
+  }
+  .file-chip .remove-file:hover { color: var(--danger); }
+  .file-chip .icon { font-size: 13px; }
+
+  .input-area { padding: 8px 20px 20px; flex-shrink: 0; background: linear-gradient(transparent, var(--bg) 30%); }
   .input-wrapper {
     display: flex; align-items: flex-end; gap: 8px;
     background: var(--surface); border: 1px solid var(--border);
@@ -257,6 +293,13 @@
     line-height: 1.5;
   }
   textarea::placeholder { color: var(--text-muted); }
+  .btn-attach {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: transparent; color: var(--text-muted); border: none;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: all .15s; font-size: 16px;
+  }
+  .btn-attach:hover { background: var(--surface-hover); color: var(--text); }
   .btn-send {
     width: 36px; height: 36px; border-radius: 50%;
     background: var(--accent); color: #fff; border: none;
@@ -280,6 +323,7 @@
 <body>
 <div class="app">
   <div class="toast" id="toast"></div>
+  <div class="drop-overlay" id="dropOverlay"><span>&#x1F4CE; 拖放文件到此处上传</span></div>
 
   <header>
     <div class="brand">
@@ -315,12 +359,15 @@
   </div>
 
   <div class="input-area">
+    <div class="file-chips" id="fileChips"></div>
     <div class="input-wrapper">
+      <input type="file" id="fileInput" multiple hidden accept=".txt,.md,.py,.js,.ts,.jsx,.tsx,.html,.css,.json,.xml,.yaml,.yml,.sh,.go,.rs,.java,.c,.cpp,.h,.sql,.csv,.toml,.ini,.cfg,.log,.env,.gitignore,.env.example">
+      <button class="btn-attach" id="attachBtn" title="上传文件">&#x1F4CE;</button>
       <textarea id="input" rows="1" placeholder="输入消息..." autofocus></textarea>
       <button class="btn-send" id="sendBtn" disabled>&#x2191;</button>
     </div>
     <div class="input-footer">
-      <span>Shift + Enter 换行</span>
+      <span>Shift + Enter 换行 | &#x1F4CE; 上传文本文件</span>
       <span>流式输出 | deepseek-chat</span>
     </div>
   </div>
@@ -443,11 +490,62 @@ const inputEl = document.getElementById('input');
 const sendBtn = document.getElementById('sendBtn');
 const welcomeEl = document.getElementById('welcome');
 
-const state = { history: [], streaming: false, lastUserMsg: null, controller: null };
+const state = { history: [], streaming: false, lastUserMsg: null, controller: null, pendingFiles: [] };
+
+// ============ File Upload ============
+const fileInput = document.getElementById('fileInput');
+const attachBtn = document.getElementById('attachBtn');
+const fileChipsEl = document.getElementById('fileChips');
+const MAX_FILE_SIZE = 1024 * 1024; // 1MB
+const TEXT_EXTS = ['txt','md','py','js','ts','jsx','tsx','html','css','json','xml','yaml','yml','sh','go','rs','java','c','cpp','h','sql','csv','env.example','toml','ini','cfg','log'];
+
+attachBtn.addEventListener('click', () => fileInput.click());
+
+fileInput.addEventListener('change', async () => {
+  const files = Array.from(fileInput.files);
+  fileInput.value = '';
+
+  for (const file of files) {
+    if (file.size > MAX_FILE_SIZE) {
+      showToast('文件过大: ' + file.name + ' (最大 1MB)');
+      continue;
+    }
+    const ext = file.name.split('.').pop() || '';
+    if (!TEXT_EXTS.includes(ext)) {
+      showToast('不支持的文件类型: .' + ext);
+      continue;
+    }
+    try {
+      const content = await file.text();
+      state.pendingFiles.push({ name: file.name, ext, content, size: file.size });
+    } catch (e) {
+      showToast('读取失败: ' + file.name);
+    }
+  }
+  renderFileChips();
+});
+
+function renderFileChips() {
+  const files = state.pendingFiles || [];
+  if (files.length === 0) { fileChipsEl.innerHTML = ''; return; }
+  fileChipsEl.innerHTML = files.map((f, i) =>
+    `<div class="file-chip">
+      <span class="icon">&#x1F4C4;</span>
+      <span class="filename">${escapeHtml(f.name)}</span>
+      <span class="filesize">${(f.size / 1024).toFixed(1)}KB</span>
+      <button class="remove-file" onclick="removeFile(${i})">&times;</button>
+    </div>`
+  ).join('');
+}
+
+function removeFile(idx) {
+  state.pendingFiles.splice(idx, 1);
+  renderFileChips();
+}
 
 function scrollToBottom() { chatEl.scrollTop = chatEl.scrollHeight; }
 
-function addUserMessage(text) {
+function addUserMessage(text, files) {
   welcomeEl.style.display = 'none';
   state.lastUserMsg = text;
 
@@ -458,6 +556,14 @@ function addUserMessage(text) {
   group.className = 'msg-group user-group';
   group.dataset.text = text;
 
+  let fileHtml = '';
+  if (files && files.length > 0) {
+    fileHtml = files.map(f =>
+      `<div style="display:inline-flex;align-items:center;gap:4px;background:var(--file-chip-bg);border:1px solid var(--file-chip-border);border-radius:6px;padding:2px 8px;font-size:12px;color:var(--file-icon-color);margin:2px 4px 2px 0">&#x1F4C4; ${escapeHtml(f.name)}</div>`
+    ).join('');
+    fileHtml = '<div style="margin-bottom:6px">' + fileHtml + '</div>';
+  }
+
   group.innerHTML = `
     <div class="msg-header">
       <div class="msg-avatar user">U</div>
@@ -467,7 +573,7 @@ function addUserMessage(text) {
         <button class="msg-action-btn" onclick="editUserMessage(this)" title="编辑">&#x270E;</button>
       </div>
     </div>
-    <div class="msg-content">${escapeHtml(text)}</div>
+    <div class="msg-content">${fileHtml}${escapeHtml(text)}</div>
   `;
 
   chatEl.appendChild(group);
@@ -678,6 +784,8 @@ function clearChat() {
   if (!confirm('确定开始新对话？')) return;
   state.history.length = 0;
   state.lastUserMsg = null;
+  state.pendingFiles = [];
+  renderFileChips();
   document.querySelectorAll('.msg-group, .thinking').forEach(el => el.remove());
   welcomeEl.style.display = '';
   inputEl.focus();
@@ -726,14 +834,28 @@ function suggest(text) {
 async function sendMessage() {
   if (state.streaming) return;
   const text = inputEl.value.trim();
-  if (!text) return;
+  const files = state.pendingFiles || [];
+  if (!text && files.length === 0) return;
 
   inputEl.value = '';
   sendBtn.disabled = true;
   autoResize();
 
-  addUserMessage(text);
-  state.history.push({ role: 'user', content: text });
+  // Build message with file contents
+  let userContent = text;
+  if (files.length > 0) {
+    const fileBlocks = files.map(f =>
+      `\`\`\`${f.ext}\n// File: ${f.name}\n${f.content}\n\`\`\``
+    ).join('\n\n');
+    userContent = text
+      ? `用户上传了以下文件：\n${fileBlocks}\n\n用户说：${text}`
+      : `请分析以下文件：\n${fileBlocks}`;
+  }
+  state.pendingFiles = [];
+  renderFileChips();
+
+  addUserMessage(userContent, files);
+  state.history.push({ role: 'user', content: userContent });
 
   hideThinking();
   const reply = await sendMessageStream(state.history);
@@ -741,6 +863,45 @@ async function sendMessage() {
     state.history.push({ role: 'assistant', content: reply });
   }
 }
+
+// ============ Drag & Drop ============
+const dropOverlay = document.getElementById('dropOverlay');
+let dropTimer = null;
+
+document.addEventListener('dragenter', (e) => {
+  e.preventDefault();
+  clearTimeout(dropTimer);
+  dropOverlay.classList.add('show');
+});
+document.addEventListener('dragover', (e) => e.preventDefault());
+document.addEventListener('dragleave', (e) => {
+  if (e.target === document) {
+    dropOverlay.classList.remove('show');
+  }
+});
+document.addEventListener('drop', async (e) => {
+  e.preventDefault();
+  dropOverlay.classList.remove('show');
+  const files = Array.from(e.dataTransfer.files);
+  for (const file of files) {
+    if (file.size > MAX_FILE_SIZE) {
+      showToast('文件过大: ' + file.name + ' (最大 1MB)');
+      continue;
+    }
+    const ext = file.name.split('.').pop() || '';
+    if (!TEXT_EXTS.includes(ext)) {
+      showToast('不支持的文件类型: .' + ext);
+      continue;
+    }
+    try {
+      const content = await file.text();
+      state.pendingFiles.push({ name: file.name, ext, content, size: file.size });
+    } catch (e) {
+      showToast('读取失败: ' + file.name);
+    }
+  }
+  renderFileChips();
+});
 
 inputEl.focus();
 </script>
