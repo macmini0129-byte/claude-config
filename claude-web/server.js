@@ -39,6 +39,8 @@ function resolveConfig(clientConfig) {
       baseUrl: cfg.baseUrl || SERVER_OPENAI_URL,
       model: cfg.model || SERVER_OPENAI_MODEL,
       maxTokens: cfg.maxTokens || 4096,
+      temperature: cfg.temperature !== undefined ? cfg.temperature : undefined,
+      systemPrompt: cfg.systemPrompt || '',
     };
   }
   return {
@@ -47,6 +49,8 @@ function resolveConfig(clientConfig) {
     baseUrl: cfg.baseUrl || SERVER_DEEPSEEK_URL,
     model: cfg.model || SERVER_DEEPSEEK_MODEL,
     maxTokens: cfg.maxTokens || 4096,
+    temperature: cfg.temperature !== undefined ? cfg.temperature : undefined,
+    systemPrompt: cfg.systemPrompt || '',
   };
 }
 
@@ -86,6 +90,7 @@ async function handleOpenAI(cfg, messages, files, stream, res) {
     max_tokens: cfg.maxTokens,
     messages: apiMessages,
   };
+  if (cfg.temperature !== undefined) body.temperature = cfg.temperature;
   if (stream) body.stream = true;
 
   const response = await fetch(`${cfg.baseUrl}/chat/completions`.replace(/\/+$/, ''), {
@@ -123,6 +128,7 @@ async function handleDeepSeek(cfg, messages, files, stream, res) {
     max_tokens: cfg.maxTokens,
     messages: msgs.map(m => ({ role: m.role, content: m.content })),
   };
+  if (cfg.temperature !== undefined) body.temperature = cfg.temperature;
   if (stream) body.stream = true;
 
   const response = await fetch(`${cfg.baseUrl}/v1/messages`.replace(/\/+$/, ''), {
