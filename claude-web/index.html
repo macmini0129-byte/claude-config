@@ -361,13 +361,13 @@
   <div class="input-area">
     <div class="file-chips" id="fileChips"></div>
     <div class="input-wrapper">
-      <input type="file" id="fileInput" multiple hidden accept=".txt,.md,.py,.js,.ts,.jsx,.tsx,.html,.css,.json,.xml,.yaml,.yml,.sh,.go,.rs,.java,.c,.cpp,.h,.sql,.csv,.toml,.ini,.cfg,.log,.env,.gitignore,.env.example,.jpg,.jpeg,.png,.gif,.webp">
+      <input type="file" id="fileInput" multiple hidden>
       <button class="btn-attach" id="attachBtn" title="上传文件">&#x1F4CE;</button>
       <textarea id="input" rows="1" placeholder="输入消息..." autofocus></textarea>
       <button class="btn-send" id="sendBtn" disabled>&#x2191;</button>
     </div>
     <div class="input-footer">
-      <span>Shift + Enter 换行 | &#x1F4CE; 上传文本文件</span>
+      <span>Shift + Enter 换行 | &#x1F4CE; 上传文件 (最大 10MB)</span>
       <span id="footerModel">流式输出</span> | <span id="visionBadge"></span>
     </div>
   </div>
@@ -516,54 +516,58 @@ loadConfig();
 const fileInput = document.getElementById('fileInput');
 const attachBtn = document.getElementById('attachBtn');
 const fileChipsEl = document.getElementById('fileChips');
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const TEXT_EXTS = ['txt','md','py','js','ts','jsx','tsx','html','css','json','xml','yaml','yml','sh','go','rs','java','c','cpp','h','sql','csv','env.example','toml','ini','cfg','log'];
-const IMG_EXTS = ['jpg','jpeg','png','gif','webp'];
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+async function handleFile(file) {
+  if (file.size > MAX_FILE_SIZE) {
+    showToast('文件过大: ' + file.name + ' (最大 10MB)');
+    return;
+  }
+
+  const isImage = file.type.startsWith('image/');
+
+  if (isImage) {
+    if (!state.supportsVision) {
+      showToast('当前模型不支持图片识别: ' + file.name);
+      return;
+    }
+    try {
+      const dataUrl = await new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result);
+        r.onerror = reject;
+        r.readAsDataURL(file);
+      });
+      const base64 = dataUrl.split(',')[1];
+      const ext = file.name.split('.').pop() || '';
+      state.pendingFiles.push({
+        name: file.name, ext, size: file.size,
+        type: file.type,
+        data: base64, isImage: true
+      });
+    } catch (e) {
+      showToast('读取图片失败: ' + file.name);
+    }
+  } else {
+    try {
+      const content = await file.text();
+      const ext = file.name.split('.').pop() || '';
+      state.pendingFiles.push({
+        name: file.name, ext, content, size: file.size, isImage: false
+      });
+    } catch (e) {
+      showToast('不支持的文件格式: ' + file.name + ' (无法读取为文本)');
+    }
+  }
+}
 
 attachBtn.addEventListener('click', () => fileInput.click());
 
 fileInput.addEventListener('change', async () => {
   const files = Array.from(fileInput.files);
   fileInput.value = '';
-
   for (const file of files) {
-    if (file.size > MAX_FILE_SIZE) {
-      showToast('文件过大: ' + file.name + ' (最大 5MB)');
-      continue;
-    }
-    const ext = file.name.split('.').pop()?.toLowerCase() || '';
-    const isImage = IMG_EXTS.includes(ext);
-
-    if (!TEXT_EXTS.includes(ext) && !isImage) {
-      showToast('不支持的文件类型: .' + ext);
-      continue;
-    }
-
-    try {
-      if (isImage) {
-        if (!state.supportsVision) {
-          showToast('当前模型不支持图片识别: ' + file.name);
-          continue;
-        }
-        const dataUrl = await new Promise((resolve, reject) => {
-          const r = new FileReader();
-          r.onload = () => resolve(r.result);
-          r.onerror = reject;
-          r.readAsDataURL(file);
-        });
-        const base64 = dataUrl.split(',')[1];
-        state.pendingFiles.push({
-          name: file.name, ext, size: file.size,
-          type: 'image/' + ext.replace('jpg','jpeg'),
-          data: base64, isImage: true
-        });
-      } else {
-        const content = await file.text();
-        state.pendingFiles.push({ name: file.name, ext, content, size: file.size, isImage: false });
-      }
-    } catch (e) {
-      showToast('读取失败: ' + file.name);
-    }
+    await handleFile(file);
   }
   renderFileChips();
 });
@@ -943,43 +947,7 @@ document.addEventListener('drop', async (e) => {
   dropOverlay.classList.remove('show');
   const files = Array.from(e.dataTransfer.files);
   for (const file of files) {
-    if (file.size > MAX_FILE_SIZE) {
-      showToast('文件过大: ' + file.name + ' (最大 5MB)');
-      continue;
-    }
-    const ext = file.name.split('.').pop()?.toLowerCase() || '';
-    const isImage = IMG_EXTS.includes(ext);
-
-    if (!TEXT_EXTS.includes(ext) && !isImage) {
-      showToast('不支持的文件类型: .' + ext);
-      continue;
-    }
-
-    try {
-      if (isImage) {
-        if (!state.supportsVision) {
-          showToast('当前模型不支持图片识别: ' + file.name);
-          continue;
-        }
-        const dataUrl = await new Promise((resolve, reject) => {
-          const r = new FileReader();
-          r.onload = () => resolve(r.result);
-          r.onerror = reject;
-          r.readAsDataURL(file);
-        });
-        const base64 = dataUrl.split(',')[1];
-        state.pendingFiles.push({
-          name: file.name, ext, size: file.size,
-          type: 'image/' + ext.replace('jpg','jpeg'),
-          data: base64, isImage: true
-        });
-      } else {
-        const content = await file.text();
-        state.pendingFiles.push({ name: file.name, ext, content, size: file.size, isImage: false });
-      }
-    } catch (e) {
-      showToast('读取失败: ' + file.name);
-    }
+    await handleFile(file);
   }
   renderFileChips();
 });
