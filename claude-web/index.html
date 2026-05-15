@@ -329,7 +329,7 @@
     <div class="brand">
       <div class="logo">C</div>
       <span class="brand-text">Claude Code</span>
-      <span class="model-badge">deepseek-chat</span>
+      <span class="model-badge" id="modelBadge">加载中...</span>
     </div>
     <div class="header-actions">
       <button class="btn-icon" onclick="clearChat()" title="新对话">&#x2795;</button>
@@ -361,14 +361,14 @@
   <div class="input-area">
     <div class="file-chips" id="fileChips"></div>
     <div class="input-wrapper">
-      <input type="file" id="fileInput" multiple hidden accept=".txt,.md,.py,.js,.ts,.jsx,.tsx,.html,.css,.json,.xml,.yaml,.yml,.sh,.go,.rs,.java,.c,.cpp,.h,.sql,.csv,.toml,.ini,.cfg,.log,.env,.gitignore,.env.example">
+      <input type="file" id="fileInput" multiple hidden accept=".txt,.md,.py,.js,.ts,.jsx,.tsx,.html,.css,.json,.xml,.yaml,.yml,.sh,.go,.rs,.java,.c,.cpp,.h,.sql,.csv,.toml,.ini,.cfg,.log,.env,.gitignore,.env.example,.jpg,.jpeg,.png,.gif,.webp">
       <button class="btn-attach" id="attachBtn" title="上传文件">&#x1F4CE;</button>
       <textarea id="input" rows="1" placeholder="输入消息..." autofocus></textarea>
       <button class="btn-send" id="sendBtn" disabled>&#x2191;</button>
     </div>
     <div class="input-footer">
       <span>Shift + Enter 换行 | &#x1F4CE; 上传文本文件</span>
-      <span>流式输出 | deepseek-chat</span>
+      <span id="footerModel">流式输出</span> | <span id="visionBadge"></span>
     </div>
   </div>
 </div>
@@ -490,14 +490,35 @@ const inputEl = document.getElementById('input');
 const sendBtn = document.getElementById('sendBtn');
 const welcomeEl = document.getElementById('welcome');
 
-const state = { history: [], streaming: false, lastUserMsg: null, controller: null, pendingFiles: [] };
+const state = {
+  history: [], streaming: false, lastUserMsg: null, controller: null,
+  pendingFiles: [], supportsVision: false, provider: 'deepseek', model: 'deepseek-chat'
+};
+
+// ============ Load Config ============
+async function loadConfig() {
+  try {
+    const res = await fetch('/api/config');
+    const config = await res.json();
+    state.provider = config.provider;
+    state.model = config.model;
+    state.supportsVision = config.supportsVision;
+    document.getElementById('modelBadge').textContent = config.model;
+    document.getElementById('footerModel').textContent = config.model;
+    if (config.supportsVision) {
+      document.getElementById('visionBadge').textContent = '支持图片';
+    }
+  } catch(e) {}
+}
+loadConfig();
 
 // ============ File Upload ============
 const fileInput = document.getElementById('fileInput');
 const attachBtn = document.getElementById('attachBtn');
 const fileChipsEl = document.getElementById('fileChips');
-const MAX_FILE_SIZE = 1024 * 1024; // 1MB
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const TEXT_EXTS = ['txt','md','py','js','ts','jsx','tsx','html','css','json','xml','yaml','yml','sh','go','rs','java','c','cpp','h','sql','csv','env.example','toml','ini','cfg','log'];
+const IMG_EXTS = ['jpg','jpeg','png','gif','webp'];
 
 attachBtn.addEventListener('click', () => fileInput.click());
 
@@ -507,17 +528,39 @@ fileInput.addEventListener('change', async () => {
 
   for (const file of files) {
     if (file.size > MAX_FILE_SIZE) {
-      showToast('文件过大: ' + file.name + ' (最大 1MB)');
+      showToast('文件过大: ' + file.name + ' (最大 5MB)');
       continue;
     }
-    const ext = file.name.split('.').pop() || '';
-    if (!TEXT_EXTS.includes(ext)) {
+    const ext = file.name.split('.').pop()?.toLowerCase() || '';
+    const isImage = IMG_EXTS.includes(ext);
+
+    if (!TEXT_EXTS.includes(ext) && !isImage) {
       showToast('不支持的文件类型: .' + ext);
       continue;
     }
+
     try {
-      const content = await file.text();
-      state.pendingFiles.push({ name: file.name, ext, content, size: file.size });
+      if (isImage) {
+        if (!state.supportsVision) {
+          showToast('当前模型不支持图片识别: ' + file.name);
+          continue;
+        }
+        const dataUrl = await new Promise((resolve, reject) => {
+          const r = new FileReader();
+          r.onload = () => resolve(r.result);
+          r.onerror = reject;
+          r.readAsDataURL(file);
+        });
+        const base64 = dataUrl.split(',')[1];
+        state.pendingFiles.push({
+          name: file.name, ext, size: file.size,
+          type: 'image/' + ext.replace('jpg','jpeg'),
+          data: base64, isImage: true
+        });
+      } else {
+        const content = await file.text();
+        state.pendingFiles.push({ name: file.name, ext, content, size: file.size, isImage: false });
+      }
     } catch (e) {
       showToast('读取失败: ' + file.name);
     }
@@ -530,7 +573,7 @@ function renderFileChips() {
   if (files.length === 0) { fileChipsEl.innerHTML = ''; return; }
   fileChipsEl.innerHTML = files.map((f, i) =>
     `<div class="file-chip">
-      <span class="icon">&#x1F4C4;</span>
+      <span class="icon">${f.isImage ? '&#x1F5BC;' : '&#x1F4C4;'}</span>
       <span class="filename">${escapeHtml(f.name)}</span>
       <span class="filesize">${(f.size / 1024).toFixed(1)}KB</span>
       <button class="remove-file" onclick="removeFile(${i})">&times;</button>
@@ -558,10 +601,16 @@ function addUserMessage(text, files) {
 
   let fileHtml = '';
   if (files && files.length > 0) {
-    fileHtml = files.map(f =>
-      `<div style="display:inline-flex;align-items:center;gap:4px;background:var(--file-chip-bg);border:1px solid var(--file-chip-border);border-radius:6px;padding:2px 8px;font-size:12px;color:var(--file-icon-color);margin:2px 4px 2px 0">&#x1F4C4; ${escapeHtml(f.name)}</div>`
-    ).join('');
-    fileHtml = '<div style="margin-bottom:6px">' + fileHtml + '</div>';
+    const chips = files.map(f => {
+      if (f.isImage) {
+        return `<div style="display:inline-block;margin:2px 4px 2px 0;border-radius:8px;overflow:hidden;border:1px solid var(--border);max-width:200px">
+          <img src="data:${f.type||'image/png'};base64,${escapeHtml(f.data)}" style="width:100%;display:block;max-height:120px;object-fit:cover" alt="${escapeHtml(f.name)}">
+          <div style="padding:2px 6px;font-size:11px;color:var(--text-muted);background:var(--bg)">${escapeHtml(f.name)}</div>
+        </div>`;
+      }
+      return `<div style="display:inline-flex;align-items:center;gap:4px;background:var(--file-chip-bg);border:1px solid var(--file-chip-border);border-radius:6px;padding:2px 8px;font-size:12px;color:var(--file-icon-color);margin:2px 4px 2px 0">&#x1F4C4; ${escapeHtml(f.name)}</div>`;
+    }).join('');
+    fileHtml = '<div style="margin-bottom:6px">' + chips + '</div>';
   }
 
   group.innerHTML = `
@@ -653,7 +702,7 @@ function hideThinking() {
 }
 
 // ============ Streaming ============
-async function sendMessageStream(messages) {
+async function sendMessageStream(messages, files) {
   const contentEl = createAssistantMessage();
   state.streaming = true;
 
@@ -661,7 +710,7 @@ async function sendMessageStream(messages) {
     const res = await fetch('/api/chat/stream', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages }),
+      body: JSON.stringify({ messages, files }),
     });
 
     if (!res.ok) {
@@ -801,7 +850,7 @@ async function regenerate() {
   }
   // Re-send
   state.history.push({ role: 'user', content: state.lastUserMsg });
-  const reply = await sendMessageStream(state.history);
+  const reply = await sendMessageStream(state.history, []);
   if (reply) {
     state.history.push({ role: 'assistant', content: reply });
   }
@@ -843,14 +892,24 @@ async function sendMessage() {
 
   // Build message with file contents
   let userContent = text;
-  if (files.length > 0) {
-    const fileBlocks = files.map(f =>
+  const nonImageFiles = files.filter(f => !f.isImage);
+  const imageFiles = files.filter(f => f.isImage);
+
+  if (nonImageFiles.length > 0) {
+    const fileBlocks = nonImageFiles.map(f =>
       `\`\`\`${f.ext}\n// File: ${f.name}\n${f.content}\n\`\`\``
     ).join('\n\n');
     userContent = text
       ? `用户上传了以下文件：\n${fileBlocks}\n\n用户说：${text}`
       : `请分析以下文件：\n${fileBlocks}`;
   }
+
+  // Store files for API call
+  const apiFiles = files.length > 0 ? files.map(f => ({
+    name: f.name, ext: f.ext, content: f.content,
+    type: f.type || '', data: f.data || '', isImage: f.isImage || false
+  })) : [];
+
   state.pendingFiles = [];
   renderFileChips();
 
@@ -858,7 +917,7 @@ async function sendMessage() {
   state.history.push({ role: 'user', content: userContent });
 
   hideThinking();
-  const reply = await sendMessageStream(state.history);
+  const reply = await sendMessageStream(state.history, apiFiles);
   if (reply) {
     state.history.push({ role: 'assistant', content: reply });
   }
@@ -885,17 +944,39 @@ document.addEventListener('drop', async (e) => {
   const files = Array.from(e.dataTransfer.files);
   for (const file of files) {
     if (file.size > MAX_FILE_SIZE) {
-      showToast('文件过大: ' + file.name + ' (最大 1MB)');
+      showToast('文件过大: ' + file.name + ' (最大 5MB)');
       continue;
     }
-    const ext = file.name.split('.').pop() || '';
-    if (!TEXT_EXTS.includes(ext)) {
+    const ext = file.name.split('.').pop()?.toLowerCase() || '';
+    const isImage = IMG_EXTS.includes(ext);
+
+    if (!TEXT_EXTS.includes(ext) && !isImage) {
       showToast('不支持的文件类型: .' + ext);
       continue;
     }
+
     try {
-      const content = await file.text();
-      state.pendingFiles.push({ name: file.name, ext, content, size: file.size });
+      if (isImage) {
+        if (!state.supportsVision) {
+          showToast('当前模型不支持图片识别: ' + file.name);
+          continue;
+        }
+        const dataUrl = await new Promise((resolve, reject) => {
+          const r = new FileReader();
+          r.onload = () => resolve(r.result);
+          r.onerror = reject;
+          r.readAsDataURL(file);
+        });
+        const base64 = dataUrl.split(',')[1];
+        state.pendingFiles.push({
+          name: file.name, ext, size: file.size,
+          type: 'image/' + ext.replace('jpg','jpeg'),
+          data: base64, isImage: true
+        });
+      } else {
+        const content = await file.text();
+        state.pendingFiles.push({ name: file.name, ext, content, size: file.size, isImage: false });
+      }
     } catch (e) {
       showToast('读取失败: ' + file.name);
     }
