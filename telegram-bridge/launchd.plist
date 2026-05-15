@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.user.telegram-claude-bridge</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/qclaw/.local/bin/telegram-claude-bridge.js</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/tmp/tg-bridge-stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/tg-bridge-stderr.log</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Users/qclaw/.npm-global/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>HOME</key>
+        <string>/Users/qclaw</string>
+        <key>TELEGRAM_BOT_TOKEN</key>
+        <string>__FILL_IN__</string>
+        <key>TELEGRAM_CHAT_ID</key>
+        <string>8582340013</string>
+        <key>ANTHROPIC_AUTH_TOKEN</key>
+        <string>__FILL_IN__</string>
+        <key>ANTHROPIC_BASE_URL</key>
+        <string>https://api.deepseek.com/anthropic</string>
+        <key>ANTHROPIC_MODEL</key>
+        <string>deepseek-chat</string>
+    </dict>
+    <key>WorkingDirectory</key>
+    <string>/Users/qclaw</string>
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+</dict>
+</plist>
