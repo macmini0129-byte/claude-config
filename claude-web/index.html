@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Claude Code</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23c084fc'/><text x='50%%' y='55%%' dominant-baseline='middle' text-anchor='middle' fill='white' font-family='system-ui' font-weight='800' font-size='20'>C</text></svg>">
 <style>
   *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
   :root {
@@ -822,7 +823,6 @@ function loadSession(id) {
   renderSidebar(); scrollToBottom();
 }
 function deleteSession(id) {
-  if (!confirm('删除此对话？')) return;
   loadSessions(); sessions = sessions.filter(s=>s.id!==id); saveSessions();
   if (state.currentSessionId===id) { state.currentSessionId=null; }
   renderSidebar();
@@ -1042,7 +1042,7 @@ function addUserSkill(){
   const d=prompt('技能描述:')||''; const b=prompt('技能内容:')||'';
   if(!b)return; userSkills.push({name:n,description:d,body:b,category:'user',_user:true}); saveUserSkills(); renderSkills();
 }
-function deleteUserSkill(n){ if(!confirm('删除 "'+n+'"？'))return; userSkills=userSkills.filter(s=>s.name!==n); saveUserSkills(); renderSkills(); }
+function deleteUserSkill(n){ userSkills=userSkills.filter(s=>s.name!==n); saveUserSkills(); renderSkills(); }
 function editUserSkill(n){
   const s=userSkills.find(x=>x.name===n); if(!s)return;
   s.name=prompt('名称:',s.name)||s.name; s.description=prompt('描述:',s.description||'')||''; s.body=prompt('内容:',s.body||'')||'';
@@ -1170,7 +1170,6 @@ function exportConversation(){
 }
 function clearChat(){
   if(state.history.length===0&&!document.querySelector('.msg-group'))return;
-  if(!confirm('确定开始新对话？'))return;
   state.history.length=0; state.lastUserMsg=null; state.pendingFiles=[]; state.currentSessionId=null;
   renderFileChips(); document.querySelectorAll('.msg-group,.thinking').forEach(e=>e.remove()); welcomeEl.style.display=''; inputEl.focus();
 }
@@ -1224,7 +1223,6 @@ function refreshAnalytics(){
   }
 }
 function clearAnalytics(){
-  if(!confirm('清除所有分析数据？'))return;
   localStorage.removeItem('claude-web-stats'); refreshAnalytics(); showToast('已清除');
 }
 function openAnalytics(){
