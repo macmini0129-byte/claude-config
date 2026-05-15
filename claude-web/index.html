@@ -312,6 +312,53 @@
     display: flex; justify-content: space-between; padding: 6px 4px 0; font-size: 11px; color: var(--text-muted);
   }
 
+  /* Skills */
+  .skills-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 10px; max-height: 50vh; overflow-y: auto; padding: 4px 0;
+  }
+  .skills-grid::-webkit-scrollbar { width: 6px; }
+  .skills-grid::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  .skill-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 12px 14px;
+    cursor: pointer; transition: all .15s;
+  }
+  .skill-card:hover { border-color: var(--accent); background: var(--surface-hover); }
+  .skill-card .skill-cat {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;
+    color: var(--accent); margin-bottom: 4px;
+  }
+  .skill-card .skill-name { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .skill-card .skill-desc { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+  .skill-card .skill-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .skill-card .skill-tag {
+    font-size: 10px; background: var(--file-chip-bg); color: var(--file-icon-color);
+    padding: 1px 7px; border-radius: 10px; border: 1px solid var(--file-chip-border);
+  }
+  .skills-search {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 10px 12px;
+    color: var(--text); font-size: 13px; font-family: var(--font); margin-bottom: 12px;
+  }
+  .skills-search:focus { outline: none; border-color: var(--accent); }
+  .skills-empty {
+    text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 13px;
+  }
+  .skill-detail { padding: 12px 0; }
+  .skill-detail h3 { font-size: 15px; color: var(--text); margin-bottom: 8px; }
+  .skill-detail .skill-meta { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+  .skill-detail pre {
+    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 14px; font-size: 13px; line-height: 1.5; max-height: 40vh; overflow-y: auto;
+    font-family: var(--font-mono); color: var(--text-secondary); white-space: pre-wrap;
+  }
+  .skill-back {
+    background: none; border: none; color: var(--accent); cursor: pointer;
+    font-size: 13px; font-family: var(--font); padding: 0; margin-bottom: 12px;
+  }
+  .skill-back:hover { text-decoration: underline; }
+
   /* Settings Modal */
   .modal-overlay {
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -390,10 +437,21 @@
       <span class="model-badge" id="modelBadge">加载中...</span>
     </div>
     <div class="header-actions">
+      <button class="btn-icon" onclick="openSkills()" title="技能">&#x1F9E0;</button>
       <button class="btn-icon" onclick="openSettings()" title="设置">&#x2699;</button>
       <button class="btn-icon" onclick="clearChat()" title="新对话">&#x2795;</button>
     </div>
   </header>
+
+  <!-- Skills Modal -->
+  <div class="modal-overlay" id="skillsModal">
+    <div class="modal" style="max-width:640px">
+      <button class="modal-close" onclick="closeSkills()">&times;</button>
+      <h2 id="skillsTitle">技能管理</h2>
+      <input type="text" class="skills-search" id="skillsSearch" placeholder="搜索技能..." oninput="renderSkills()">
+      <div id="skillsContent"></div>
+    </div>
+  </div>
 
   <!-- Settings Modal -->
   <div class="modal-overlay" id="settingsModal">
@@ -704,6 +762,160 @@ function getApiConfig() {
     openaiKey: s.openaiKey || '',
     maxTokens: s.maxTokens || 4096,
   };
+}
+
+// ============ Skills ============
+let skillsData = [];
+let userSkills = [];
+
+function loadUserSkills() {
+  try { userSkills = JSON.parse(localStorage.getItem('claude-web-user-skills') || '[]'); } catch(e) { userSkills = []; }
+}
+function saveUserSkills() {
+  localStorage.setItem('claude-web-user-skills', JSON.stringify(userSkills));
+}
+
+async function openSkills() {
+  document.getElementById('skillsTitle').textContent = '技能管理';
+  document.getElementById('skillsSearch').value = '';
+  document.getElementById('skillsModal').classList.add('show');
+  try {
+    const res = await fetch('/api/skills');
+    const data = await res.json();
+    skillsData = data.skills || [];
+  } catch(e) { skillsData = []; }
+  loadUserSkills();
+  renderSkills();
+}
+
+function closeSkills() {
+  document.getElementById('skillsModal').classList.remove('show');
+}
+
+function renderSkills() {
+  const query = (document.getElementById('skillsSearch').value || '').toLowerCase();
+  const allSkills = [
+    ...skillsData.map(s => ({ ...s, _user: false })),
+    ...userSkills.map(s => ({ ...s, _user: true })),
+  ];
+
+  const filtered = query
+    ? allSkills.filter(s =>
+        s.name?.toLowerCase().includes(query) ||
+        s.description?.toLowerCase().includes(query) ||
+        s.category?.toLowerCase().includes(query) ||
+        (s.tags || []).some(t => t.toLowerCase().includes(query))
+      )
+    : allSkills;
+
+  const container = document.getElementById('skillsContent');
+  if (filtered.length === 0) {
+    container.innerHTML = '<div class="skills-empty">没有找到匹配的技能</div>';
+    return;
+  }
+
+  container.innerHTML = `
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button class="btn-primary" onclick="addUserSkill()">&#x2795; 新建技能</button>
+    </div>
+    <div class="skills-grid">
+      ${filtered.map(s => {
+        const cat = s._user ? '自定义' : (s.category || '');
+        return `<div class="skill-card" onclick="viewSkill('${s._user ? 'user' : s.category}', '${s.name?.replace(/'/g, "\\'")}')">
+          <div class="skill-cat">${cat}</div>
+          <div class="skill-name">${escapeHtml(s.name)}${s._user ? ' <span style="color:var(--accent);font-size:11px">&#9998;</span>' : ''}</div>
+          <div class="skill-desc">${escapeHtml(s.description || '')}</div>
+          ${s.tags?.length ? '<div class="skill-tags">' + s.tags.map(t => '<span class="skill-tag">' + escapeHtml(t) + '</span>').join('') + '</div>' : ''}
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+}
+
+async function viewSkill(source, name) {
+  const container = document.getElementById('skillsContent');
+
+  if (source === 'user') {
+    const skill = userSkills.find(s => s.name === name);
+    if (!skill) return;
+    container.innerHTML = `
+      <button class="skill-back" onclick="renderSkills()">&#x2190; 返回列表</button>
+      <div class="skill-detail">
+        <h3>${escapeHtml(skill.name)}</h3>
+        <div class="skill-meta">${escapeHtml(skill.description || '')}</div>
+        <pre>${escapeHtml(skill.body || '')}</pre>
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <button class="btn-primary" onclick="applySkill('${escapeHtml(skill.name).replace(/'/g, "\\'")}')">&#x1F4CB; 使用此技能</button>
+          <button class="btn-secondary" onclick="editUserSkill('${escapeHtml(skill.name).replace(/'/g, "\\'")}')">&#x270E; 编辑</button>
+          <button class="btn-secondary" style="color:var(--danger)" onclick="deleteUserSkill('${escapeHtml(skill.name).replace(/'/g, "\\'")}')">&#x1F5D1; 删除</button>
+        </div>
+      </div>
+    `;
+  } else {
+    try {
+      const res = await fetch(`/api/skills/${source}/${name}`);
+      if (!res.ok) throw new Error('not found');
+      const data = await res.json();
+      container.innerHTML = `
+        <button class="skill-back" onclick="renderSkills()">&#x2190; 返回列表</button>
+        <div class="skill-detail">
+          <h3>${escapeHtml(data.meta?.name || name)}</h3>
+          <div class="skill-meta">${data.meta?.description || ''}${data.meta?.author ? ' &mdash; ' + escapeHtml(data.meta.author) : ''}</div>
+          <pre>${escapeHtml(data.body || '')}</pre>
+          <div style="margin-top:12px">
+            <button class="btn-primary" onclick="applySkill('${escapeHtml(data.body).replace(/'/g, "\\'")}')">&#x1F4CB; 使用此技能</button>
+          </div>
+        </div>
+      `;
+    } catch(e) {
+      container.innerHTML = '<div class="skills-empty">加载失败</div>';
+    }
+  }
+}
+
+function applySkill(body) {
+  inputEl.value = body;
+  inputEl.dispatchEvent(new Event('input'));
+  closeSkills();
+  inputEl.focus();
+}
+
+function addUserSkill() {
+  const name = prompt('技能名称:');
+  if (!name) return;
+  const description = prompt('技能描述:') || '';
+  const body = prompt('技能内容（指令/提示词）:') || '';
+  if (!body) return;
+  userSkills.push({ name, description, body, category: 'user', tags: [], _user: true });
+  saveUserSkills();
+  renderSkills();
+}
+
+function deleteUserSkill(name) {
+  if (!confirm('确定删除技能 "' + name + '"？')) return;
+  userSkills = userSkills.filter(s => s.name !== name);
+  saveUserSkills();
+  renderSkills();
+}
+
+function editUserSkill(name) {
+  const skill = userSkills.find(s => s.name === name);
+  if (!skill) return;
+  const newName = prompt('技能名称:', skill.name) || skill.name;
+  const newDesc = prompt('技能描述:', skill.description || '') || '';
+  const newBody = prompt('技能内容:', skill.body || '') || '';
+  skill.name = newName;
+  skill.description = newDesc;
+  skill.body = newBody;
+  saveUserSkills();
+  viewSkill('user', newName);
+}
+
+// Add "add skill" button below grid
+function renderSkillsWithAdd() {
+  loadUserSkills();
+  renderSkills();
+  // We append add button after grid
 }
 
 // ============ File Upload ============

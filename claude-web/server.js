@@ -1,6 +1,9 @@
 import express from 'express';
 import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -244,6 +247,73 @@ app.post('/api/chat/stream', async (req, res) => {
     res.write(`event: error\ndata: ${JSON.stringify({ error: err.message })}\n\n`);
   }
   res.end();
+});
+
+// ============ Skills API ============
+const SKILLS_DIR = path.join(process.env.HOME || '/Users/qclaw', '.hermes', 'skills');
+
+function parseSkillFrontmatter(content) {
+  const match = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+  if (!match) return { meta: {}, body: content };
+  try {
+    const meta = {};
+    const lines = match[1].split('\n');
+    for (const line of lines) {
+      const sep = line.indexOf(':');
+      if (sep > 0) {
+        let val = line.slice(sep + 1).trim();
+        val = val.replace(/^['"](.+)['"]$/, '$1');
+        meta[line.slice(0, sep).trim()] = val;
+      }
+    }
+    return { meta, body: match[2].trim() };
+  } catch (e) {
+    return { meta: {}, body: content };
+  }
+}
+
+app.get('/api/skills', (req, res) => {
+  try {
+    if (!fs.existsSync(SKILLS_DIR)) return res.json({ skills: [] });
+    const categories = fs.readdirSync(SKILLS_DIR, { withFileTypes: true })
+      .filter(d => d.isDirectory()).map(d => d.name);
+    const skills = [];
+    for (const cat of categories) {
+      const catDir = path.join(SKILLS_DIR, cat);
+      const items = fs.readdirSync(catDir, { withFileTypes: true })
+        .filter(d => d.isDirectory()).map(d => d.name);
+      for (const item of items) {
+        const skillFile = path.join(catDir, item, 'SKILL.md');
+        if (fs.existsSync(skillFile)) {
+          const raw = fs.readFileSync(skillFile, 'utf-8');
+          const { meta } = parseSkillFrontmatter(raw);
+          skills.push({
+            category: cat,
+            name: meta.name || item,
+            description: meta.description || '',
+            tags: meta.metadata?.hermes?.tags || [],
+          });
+        }
+      }
+    }
+    res.json({ skills });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/skills/:category/:name', (req, res) => {
+  try {
+    const skillFile = path.join(SKILLS_DIR, req.params.category, req.params.name, 'SKILL.md');
+    if (!fs.existsSync(skillFile)) {
+      return res.status(404).json({ error: 'skill not found' });
+    }
+    const raw = fs.readFileSync(skillFile, 'utf-8');
+    const { meta, body } = parseSkillFrontmatter(raw);
+    res.json({ category: req.params.category, name: req.params.name, meta, body });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.listen(PORT, () => {
