@@ -2,6 +2,7 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { execSync, spawn } from 'child_process';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -320,6 +321,76 @@ app.get('/api/skills/:category/:name', (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// ============ Exec / Terminal API ============
+
+// Non-streaming exec
+app.post('/api/exec', (req, res) => {
+  const { command } = req.body;
+  if (!command || typeof command !== 'string') {
+    return res.status(400).json({ error: 'command required' });
+  }
+  try {
+    const stdout = execSync(command, { encoding: 'utf-8', timeout: 30000, maxBuffer: 1024 * 1024 });
+    res.json({ stdout, stderr: '', exitCode: 0 });
+  } catch (e) {
+    res.json({
+      stdout: e.stdout || '',
+      stderr: e.stderr || e.message,
+      exitCode: e.status || 1,
+    });
+  }
+});
+
+// Streaming exec via SSE
+app.post('/api/exec/stream', (req, res) => {
+  const { command, cwd } = req.body;
+  if (!command || typeof command !== 'string') {
+    return res.status(400).json({ error: 'command required' });
+  }
+
+  res.status(200);
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+
+  const cwdPath = cwd || process.env.HOME || '/Users/qclaw';
+
+  const child = spawn('bash', ['-c', command], {
+    cwd: cwdPath,
+    env: { ...process.env },
+    timeout: 60000,
+  });
+
+  let closed = false;
+  const send = (event, data) => {
+    if (!closed && !res.writableEnded) {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    }
+  };
+
+  res.on('close', () => {
+    closed = true;
+    child.kill('SIGTERM');
+  });
+
+  child.stdout.on('data', (data) => send('stdout', { text: data.toString() }));
+  child.stderr.on('data', (data) => send('stderr', { text: data.toString() }));
+
+  child.on('error', (err) => {
+    send('error', { text: err.message });
+    send('exit', { code: 1 });
+    if (!res.writableEnded) res.end();
+    closed = true;
+  });
+
+  child.on('close', (code) => {
+    send('exit', { code });
+    if (!res.writableEnded) res.end();
+    closed = true;
+  });
 });
 
 app.listen(PORT, () => {

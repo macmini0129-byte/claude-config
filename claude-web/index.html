@@ -326,6 +326,60 @@
   .scroll-bottom-btn:hover { color: var(--text); border-color: var(--border-light); }
   .scroll-bottom-btn.show { display: flex; align-items: center; gap: 6px; }
 
+  /* Terminal panel */
+  .terminal-panel {
+    flex-shrink: 0; border-top: 1px solid var(--border); background: #0d0d12;
+    display: none; flex-direction: column; max-height: 40vh;
+    transition: max-height .25s ease;
+  }
+  .terminal-panel.open { display: flex; }
+  .terminal-header {
+    display: flex; align-items: center; gap: 8px; padding: 6px 14px;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    flex-shrink: 0; cursor: row-resize;
+  }
+  .terminal-header .ttl { font-size: 12px; color: var(--text-muted); font-weight: 500; display: flex; align-items: center; gap: 6px; }
+  .terminal-header .ttl .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); flex-shrink: 0; }
+  .terminal-header .ttl .dot.running { background: var(--success); box-shadow: 0 0 6px var(--success); animation: pulse-dot 1.5s infinite; }
+  @keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .terminal-header .spacer { flex: 1; }
+  .terminal-header .term-btn {
+    background: none; border: none; color: var(--text-muted); cursor: pointer;
+    font-size: 12px; padding: 2px 8px; border-radius: 4px; font-family: var(--font);
+  }
+  .terminal-header .term-btn:hover { color: var(--text); background: var(--surface-hover); }
+  .terminal-output {
+    flex: 1; overflow-y: auto; padding: 8px 14px; font-family: var(--font-mono);
+    font-size: 12px; line-height: 1.5; min-height: 60px;
+  }
+  .terminal-line { white-space: pre-wrap; word-break: break-all; padding: 1px 0; }
+  .terminal-line.stdout { color: #e8e8ed; }
+  .terminal-line.stderr { color: #f87171; }
+  .terminal-line.system { color: var(--text-muted); font-style: italic; }
+  .terminal-line.welcome { color: var(--text-muted); }
+  .terminal-line.exit-ok { color: var(--success); }
+  .terminal-line.exit-err { color: var(--danger); }
+  .terminal-input-row {
+    display: flex; align-items: center; gap: 6px; padding: 6px 10px;
+    border-top: 1px solid var(--border); flex-shrink: 0;
+  }
+  .terminal-prompt { font-family: var(--font-mono); font-size: 13px; color: var(--success); flex-shrink: 0; }
+  .terminal-input-row input {
+    flex: 1; background: transparent; border: none; outline: none;
+    color: var(--text); font-family: var(--font-mono); font-size: 13px;
+  }
+  .terminal-input-row input::placeholder { color: var(--text-muted); }
+  .terminal-input-row .term-run-btn {
+    width: 24px; height: 24px; border-radius: 4px; border: none;
+    background: var(--accent); color: #fff; cursor: pointer;
+    font-size: 12px; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .terminal-input-row .term-run-btn:hover { background: var(--accent-hover); }
+  .terminal-input-row .term-run-btn:disabled { background: var(--border); cursor: not-allowed; }
+  [data-theme="light"] .terminal-panel { background: #f8f8fa; }
+  [data-theme="light"] .terminal-line.stdout { color: #1d1d1f; }
+
   /* Gateway status dot */
   .gateway-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; flex-shrink: 0; }
   .gateway-dot.online { background: var(--success); box-shadow: 0 0 6px var(--success); }
@@ -396,6 +450,7 @@
       <span class="model-badge" id="modelBadge">加载中...</span>
       <div class="spacer"></div>
       <div class="header-actions">
+        <button class="btn-icon" onclick="toggleTerminal()" title="终端" id="termToggleBtn">&#x1F5A5;</button>
         <button class="btn-icon" onclick="openTasks()" title="任务">&#x2611;</button>
         <button class="btn-icon" onclick="openSkills()" title="技能">&#x1F9E0;</button>
         <button class="btn-icon" onclick="openCron()" title="定时">&#x23F0;</button>
@@ -505,6 +560,25 @@
     <div class="log-viewer" id="logViewer"><div class="task-count">加载中...</div></div>
     <div class="modal-actions" style="margin-top:12px">
       <button class="btn-secondary btn-sm" onclick="refreshLogs()">&#x21BB; 刷新</button>
+    </div>
+  </div>
+
+  <!-- Terminal Panel -->
+  <div class="terminal-panel" id="terminalPanel">
+    <div class="terminal-header">
+      <span class="ttl"><span class="dot" id="termDot"></span>后台终端</span>
+      <span id="termStatus" style="font-size:11px;color:var(--text-muted)"></span>
+      <div class="spacer"></div>
+      <button class="term-btn" onclick="clearTerminal()">&#x1F5D1; 清除</button>
+      <button class="term-btn" onclick="toggleTerminal()">&#x25B2; 收起</button>
+    </div>
+    <div class="terminal-output" id="terminalOutput">
+      <div class="terminal-line welcome">&#x25B8; 后台终端 — 输入命令运行 (如 ls, echo, node, git)</div>
+    </div>
+    <div class="terminal-input-row">
+      <span class="terminal-prompt">$</span>
+      <input type="text" id="terminalInput" placeholder="输入命令..." autocomplete="off" spellcheck="false">
+      <button class="term-run-btn" id="termRunBtn" onclick="runTerminalCommand()">&#x21B5;</button>
     </div>
   </div>
 </div>
@@ -1253,6 +1327,119 @@ function openProfiles() {
   renderProfiles();
   document.getElementById('profilesModal').classList.add('show');
 }
+
+// ============ Terminal / Exec ============
+let terminalHistory = [];
+let termHistIdx = -1;
+let termRunning = false;
+
+function toggleTerminal() {
+  const p = document.getElementById('terminalPanel');
+  const isOpen = p.classList.toggle('open');
+  document.getElementById('termToggleBtn').classList.toggle('active', isOpen);
+  if (isOpen) setTimeout(() => document.getElementById('terminalInput').focus(), 100);
+  // Update input area bottom padding
+  document.querySelector('.input-area').style.paddingBottom = isOpen ? '4px' : '12px';
+}
+function appendTerminal(text, type) {
+  const out = document.getElementById('terminalOutput');
+  const lines = text.split('\n').filter(l => l);
+  if (lines.length === 0 && text) lines.push(text);
+  for (const line of lines) {
+    const d = document.createElement('div');
+    d.className = 'terminal-line ' + (type || 'stdout');
+    d.textContent = line;
+    out.appendChild(d);
+  }
+  out.scrollTop = out.scrollHeight;
+}
+function setTermStatus(status) {
+  const dot = document.getElementById('termDot');
+  const st = document.getElementById('termStatus');
+  dot.className = 'dot';
+  if (status === 'running') {
+    dot.classList.add('running');
+    st.textContent = '运行中...';
+  } else if (status === 'ok') {
+    st.textContent = '完成 (0)';
+    setTimeout(() => { st.textContent = ''; }, 3000);
+  } else if (status === 'err') {
+    st.textContent = '出错';
+    dot.style.background = 'var(--danger)';
+    setTimeout(() => { st.textContent = ''; dot.style.background = ''; }, 3000);
+  } else {
+    st.textContent = '';
+  }
+}
+function clearTerminal() {
+  document.getElementById('terminalOutput').innerHTML = '<div class="terminal-line welcome">&#x25B8; 终端已清除</div>';
+}
+async function runTerminalCommand() {
+  if (termRunning) return;
+  const inp = document.getElementById('terminalInput');
+  const cmd = inp.value.trim();
+  if (!cmd) return;
+  inp.value = ''; termRunning = true;
+  document.getElementById('termRunBtn').disabled = true;
+  terminalHistory.push(cmd); termHistIdx = terminalHistory.length;
+  appendTerminal('$ ' + cmd, 'system');
+  setTermStatus('running');
+  try {
+    const r = await fetch('/api/exec/stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ command: cmd, cwd: '/Users/qclaw' }),
+    });
+    const reader = r.body.getReader();
+    const dec = new TextDecoder(); let buf = '', lastEvent = '';
+    let exitCode = null;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop() || '';
+      for (const l of lines) {
+        if (l.startsWith('event: ')) { lastEvent = l.slice(7).trim(); continue; }
+        if (l.startsWith('data:')) {
+          try {
+            const d = JSON.parse(l.slice(6));
+            if (d.text) appendTerminal(d.text, lastEvent === 'stderr' ? 'stderr' : 'stdout');
+            if (d.code !== undefined) { exitCode = d.code; }
+          } catch(e) {}
+        }
+      }
+    }
+    if (exitCode === 0) setTermStatus('ok');
+    else if (exitCode !== null) { appendTerminal('命令退出码: ' + exitCode, exitCode === 0 ? 'exit-ok' : 'exit-err'); setTermStatus(exitCode === 0 ? 'ok' : 'err'); }
+    else setTermStatus('ok');
+  } catch (e) {
+    appendTerminal('执行错误: ' + e.message, 'stderr');
+    setTermStatus('err');
+  }
+  termRunning = false; document.getElementById('termRunBtn').disabled = false;
+  document.getElementById('terminalInput').focus();
+}
+// Terminal keyboard: Enter to run, Up/Down for history
+document.addEventListener('DOMContentLoaded', () => {
+  const ti = document.getElementById('terminalInput');
+  if (ti) {
+    ti.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); runTerminalCommand(); }
+      else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (terminalHistory.length === 0) return;
+        termHistIdx = Math.max(0, termHistIdx - 1);
+        ti.value = terminalHistory[termHistIdx] || '';
+      }
+      else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        termHistIdx = Math.min(terminalHistory.length, termHistIdx + 1);
+        ti.value = termHistIdx < terminalHistory.length ? terminalHistory[termHistIdx] : '';
+      }
+    });
+  }
+});
 
 // ============ Input ============
 function autoResize(){inputEl.style.height='auto';inputEl.style.height=Math.min(inputEl.scrollHeight,200)+'px';}
