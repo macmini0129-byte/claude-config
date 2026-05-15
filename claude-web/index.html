@@ -7,127 +7,108 @@
 <style>
   *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
   :root {
-    --bg: #0a0a0c;
-    --surface: #18181c;
-    --surface-hover: #1f1f25;
-    --border: #2a2a32;
-    --border-light: #3a3a45;
-    --text: #e8e8ed;
-    --text-secondary: #9e9ea8;
-    --text-muted: #6b6b78;
-    --accent: #c084fc;
-    --accent-hover: #a855f7;
-    --danger: #f87171;
+    --bg: #0a0a0c; --surface: #18181c; --surface-hover: #1f1f25;
+    --border: #2a2a32; --border-light: #3a3a45;
+    --text: #e8e8ed; --text-secondary: #9e9ea8; --text-muted: #6b6b78;
+    --accent: #c084fc; --accent-hover: #a855f7; --danger: #f87171; --success: #4ade80;
     --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-    --font-mono: 'SF Mono', 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
-
-    --file-chip-bg: #1e1b4b;
-    --file-chip-border: #312e81;
-    --file-icon-color: #a78bfa;
-    --radius: 12px;
-    --radius-sm: 8px;
-    --radius-lg: 16px;
-
-    --hl-keyword: #ff7b72;
-    --hl-string: #a5d6ff;
-    --hl-number: #79c0ff;
-    --hl-function: #d2a8ff;
-    --hl-comment: #8b949e;
-    --hl-builtin: #ffa657;
-    --hl-attr: #79c0ff;
-    --hl-tag: #7ee787;
+    --font-mono: 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
+    --file-chip-bg: #1e1b4b; --file-chip-border: #312e81; --file-icon-color: #a78bfa;
+    --radius: 12px; --radius-sm: 8px; --radius-lg: 16px;
+    --hl-keyword: #ff7b72; --hl-string: #a5d6ff; --hl-number: #79c0ff;
+    --hl-function: #d2a8ff; --hl-comment: #8b949e; --hl-builtin: #ffa657;
+    --hl-attr: #79c0ff; --hl-tag: #7ee787;
+    --sidebar-w: 280px;
   }
   html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); -webkit-font-smoothing: antialiased; }
+  .app { display: flex; height: 100vh; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
-  .app { display: flex; flex-direction: column; height: 100vh; max-width: 840px; margin: 0 auto; position: relative; }
-
-  /* Drag & drop overlay */
-  .drop-overlay {
-    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(10,10,12,0.85); border: 2px dashed var(--accent);
-    border-radius: 0; z-index: 1000;
-    display: none; align-items: center; justify-content: center;
-    pointer-events: none;
+  /* Sidebar */
+  .sidebar {
+    width: var(--sidebar-w); background: var(--surface); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden;
+    transition: transform .25s, width .25s;
   }
-  .drop-overlay.show { display: flex; }
-  .drop-overlay span { font-size: 18px; color: var(--accent); font-weight: 500; }
-
-  /* Toast notification */
-  .toast {
-    position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
-    background: var(--surface); border: 1px solid var(--border);
-    padding: 8px 20px; border-radius: 20px; font-size: 13px; color: var(--text-secondary);
-    z-index: 100; opacity: 0; transition: opacity .3s; pointer-events: none;
+  .sidebar.hidden { width: 0; border: none; }
+  .sidebar-header { padding: 14px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .sidebar-header h2 { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .sidebar-list { flex: 1; overflow-y: auto; padding: 8px; }
+  .sidebar-item {
+    padding: 10px 12px; border-radius: var(--radius-sm); cursor: pointer;
+    transition: background .15s; margin-bottom: 2px;
   }
-  .toast.show { opacity: 1; }
-
-  /* Header */
-  header {
-    padding: 12px 20px; display: flex; align-items: center; justify-content: space-between;
-    flex-shrink: 0; border-bottom: 1px solid var(--border);
+  .sidebar-item:hover { background: var(--surface-hover); }
+  .sidebar-item.active { background: rgba(192,132,252,0.12); border-left: 2px solid var(--accent); }
+  .sidebar-item-title { font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sidebar-item-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; display: flex; gap: 8px; }
+  .sidebar-item .del-session {
+    float: right; background: none; border: none; color: transparent; cursor: pointer;
+    font-size: 14px; padding: 0 4px; line-height: 1;
   }
-  .brand { display: flex; align-items: center; gap: 10px; }
-  .logo {
-    width: 28px; height: 28px; background: var(--accent); border-radius: 7px;
+  .sidebar-item:hover .del-session { color: var(--text-muted); }
+  .sidebar-item .del-session:hover { color: var(--danger); }
+  .sidebar-empty { padding: 20px; text-align: center; color: var(--text-muted); font-size: 12px; }
+  .sidebar-footer {
+    padding: 10px 12px; border-top: 1px solid var(--border); flex-shrink: 0;
+    display: flex; gap: 6px;
+  }
+  .sidebar-footer button {
+    flex: 1; padding: 7px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+    background: transparent; color: var(--text-muted); cursor: pointer; font-size: 12px;
+    font-family: var(--font); transition: all .15s;
+  }
+  .sidebar-footer button:hover { background: var(--surface-hover); color: var(--text); }
+
+  /* Main */
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .main-header {
+    padding: 10px 16px; display: flex; align-items: center; gap: 10px;
+    border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .main-header .logo {
+    width: 26px; height: 26px; background: var(--accent); border-radius: 6px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 15px; font-weight: 700; color: #fff;
+    font-size: 14px; font-weight: 700; color: #fff; flex-shrink: 0;
   }
-  .brand-text { font-size: 15px; font-weight: 600; }
-  .model-badge {
+  .main-header .brand-text { font-size: 14px; font-weight: 600; }
+  .main-header .model-badge {
     font-size: 11px; color: var(--text-muted); background: var(--surface);
-    padding: 3px 10px; border-radius: 20px; border: 1px solid var(--border);
+    padding: 2px 10px; border-radius: 20px; border: 1px solid var(--border);
   }
-  .header-actions { display: flex; gap: 8px; }
+  .main-header .spacer { flex: 1; }
+  .main-header .header-actions { display: flex; gap: 4px; }
   .btn-icon {
-    width: 32px; height: 32px; border-radius: var(--radius-sm);
-    border: none; background: transparent; color: var(--text-muted);
-    cursor: pointer; display: flex; align-items: center; justify-content: center;
-    font-size: 16px; transition: all .15s;
-  }
-  .btn-icon:hover { background: var(--surface); color: var(--text); }
-
-  /* Chat */
-  #chat { flex: 1; overflow-y: auto; padding: 0; }
-  #chat::-webkit-scrollbar { width: 6px; }
-  #chat::-webkit-scrollbar-track { background: transparent; }
-  #chat::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-  #chat::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
-
-  /* Message Group */
-  .msg-group { padding: 20px 20px 0; }
-  .msg-group:last-child { padding-bottom: 20px; }
-
-  .msg-header {
-    display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
-    position: relative;
-  }
-  .msg-avatar {
-    width: 26px; height: 26px; border-radius: 50%;
+    width: 30px; height: 30px; border-radius: 6px; border: none;
+    background: transparent; color: var(--text-muted); cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    font-size: 12px; flex-shrink: 0;
+    font-size: 15px; transition: all .15s;
   }
+  .btn-icon:hover { background: var(--surface-hover); color: var(--text); }
+  .btn-icon.active { color: var(--accent); background: rgba(192,132,252,0.12); }
+
+  /* Chat area */
+  #chat { flex: 1; overflow-y: auto; padding: 0; }
+  .msg-group { padding: 18px 20px 0; }
+  .msg-group:last-child { padding-bottom: 18px; }
+  .msg-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; position: relative; }
+  .msg-avatar { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
   .msg-avatar.user { background: #1e40af; }
   .msg-avatar.assistant { background: #3b0764; }
   .msg-name { font-size: 13px; font-weight: 600; }
   .msg-time { font-size: 11px; color: var(--text-muted); margin-left: auto; }
-
-  .msg-actions {
-    display: none; position: absolute; right: 0; top: 0; gap: 4px;
-  }
+  .msg-actions { display: none; position: absolute; right: 0; top: 0; gap: 4px; }
   .msg-group:hover .msg-actions { display: flex; }
-
   .msg-action-btn {
-    width: 28px; height: 28px; border-radius: 6px; border: none;
+    width: 26px; height: 26px; border-radius: 5px; border: none;
     background: var(--surface); color: var(--text-muted); cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    font-size: 13px; transition: all .15s;
+    font-size: 12px; transition: all .15s;
   }
   .msg-action-btn:hover { background: var(--surface-hover); color: var(--text); }
-
-  .msg-content {
-    padding-left: 34px; line-height: 1.7; font-size: 14.5px;
-    color: var(--text-secondary);
-  }
+  .msg-content { padding-left: 34px; line-height: 1.7; font-size: 14.5px; color: var(--text-secondary); }
   .msg-content > :first-child { margin-top: 0; }
   .msg-content > :last-child { margin-bottom: 0; }
   .msg-content p { margin: 10px 0; }
@@ -136,38 +117,13 @@
   .msg-content strong { color: var(--text); font-weight: 600; }
   .msg-content a { color: var(--accent); text-decoration: none; }
   .msg-content a:hover { text-decoration: underline; }
-
-  /* Inline code */
-  .msg-content code:not(pre code) {
-    font-family: var(--font-mono); font-size: 13px;
-    background: var(--surface); padding: 2px 7px; border-radius: 5px;
-    color: var(--accent);
-  }
-
-  /* Code block */
-  .msg-content pre {
-    margin: 12px 0; border-radius: var(--radius);
-    background: #0d0d12; border: 1px solid var(--border);
-    position: relative;
-  }
-  .code-header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 7px 14px; border-bottom: 1px solid var(--border);
-    font-size: 12px; color: var(--text-muted);
-  }
-  .code-header .lang-label { text-transform: lowercase; }
+  .msg-content code:not(pre code) { font-family: var(--font-mono); font-size: 13px; background: var(--surface); padding: 2px 7px; border-radius: 5px; color: var(--accent); }
+  .msg-content pre { margin: 12px 0; border-radius: var(--radius); background: #0d0d12; border: 1px solid var(--border); position: relative; }
+  .code-header { display: flex; align-items: center; justify-content: space-between; padding: 7px 14px; border-bottom: 1px solid var(--border); font-size: 12px; color: var(--text-muted); }
   .code-actions { display: flex; gap: 4px; }
-  .code-actions button {
-    background: none; border: none; color: var(--text-muted); cursor: pointer;
-    font-size: 11px; padding: 2px 8px; border-radius: 4px; transition: all .15s;
-    font-family: var(--font);
-  }
+  .code-actions button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 11px; padding: 2px 8px; border-radius: 4px; transition: all .15s; font-family: var(--font); }
   .code-actions button:hover { color: var(--text); background: var(--surface-hover); }
-
-  .msg-content pre code {
-    display: block; padding: 14px 16px; overflow-x: auto;
-    font-size: 13px; line-height: 1.6; font-family: var(--font-mono);
-  }
+  .msg-content pre code { display: block; padding: 14px 16px; overflow-x: auto; font-size: 13px; line-height: 1.6; font-family: var(--font-mono); }
   .msg-content pre code .token.keyword { color: var(--hl-keyword); }
   .msg-content pre code .token.string { color: var(--hl-string); }
   .msg-content pre code .token.number { color: var(--hl-number); }
@@ -178,166 +134,103 @@
   .msg-content pre code .token.tag { color: var(--hl-tag); }
   .msg-content pre code .token.operator { color: #ff7b72; }
   .msg-content pre code .token.punctuation { color: #8b949e; }
-
-  .msg-content blockquote {
-    border-left: 3px solid var(--accent); padding-left: 14px;
-    margin: 12px 0; color: var(--text-muted);
-  }
-  .msg-content h1, .msg-content h2, .msg-content h3, .msg-content h4 {
-    color: var(--text); margin: 18px 0 8px;
-  }
+  .msg-content blockquote { border-left: 3px solid var(--accent); padding-left: 14px; margin: 12px 0; color: var(--text-muted); }
+  .msg-content h1, .msg-content h2, .msg-content h3, .msg-content h4 { color: var(--text); margin: 18px 0 8px; }
   .msg-content h1 { font-size: 18px; }
   .msg-content h2 { font-size: 16px; }
   .msg-content h3 { font-size: 15px; }
   .msg-content h4 { font-size: 14px; }
-  .msg-content table {
-    border-collapse: collapse; margin: 12px 0; width: 100%; font-size: 13px;
-  }
-  .msg-content th, .msg-content td {
-    border: 1px solid var(--border); padding: 7px 12px; text-align: left;
-  }
+  .msg-content table { border-collapse: collapse; margin: 12px 0; width: 100%; font-size: 13px; }
+  .msg-content th, .msg-content td { border: 1px solid var(--border); padding: 7px 12px; text-align: left; }
   .msg-content th { background: var(--surface); color: var(--text); font-weight: 600; }
   .msg-content hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
   .msg-content img { max-width: 100%; border-radius: var(--radius-sm); }
-
-  /* Editable user message */
-  .msg-content[contenteditable="true"] {
-    outline: 1px solid var(--accent); border-radius: 8px; padding: 8px 12px;
-    background: rgba(192, 132, 252, 0.08);
-  }
-
   .msg-content.error { color: var(--danger); }
 
-  /* Thinking indicator */
-  .thinking {
-    display: flex; align-items: center; gap: 10px; padding: 8px 20px 8px 54px;
-    color: var(--text-muted); font-size: 13px;
-  }
+  .thinking { display: flex; align-items: center; gap: 10px; padding: 8px 20px 8px 54px; color: var(--text-muted); font-size: 13px; }
   .typing-dots { display: flex; gap: 4px; }
-  .typing-dots span {
-    width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted);
-    animation: bounce 1.4s infinite ease-in-out both;
-  }
+  .typing-dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); animation: bounce 1.4s infinite ease-in-out both; }
   .typing-dots span:nth-child(1) { animation-delay: -0.32s; }
   .typing-dots span:nth-child(2) { animation-delay: -0.16s; }
-  @keyframes bounce {
-    0%, 80%, 100% { transform: scale(0); }
-    40% { transform: scale(1); }
-  }
+  @keyframes bounce { 0%,80%,100% { transform: scale(0); } 40% { transform: scale(1); } }
+
+  .stream-cursor::after { content: ''; display: inline-block; width: 8px; height: 16px; background: var(--accent); margin-left: 2px; animation: blink 1s step-end infinite; vertical-align: text-bottom; }
+  @keyframes blink { 50% { opacity: 0; } }
 
   /* Welcome */
-  .welcome {
-    display: flex; flex-direction: column; align-items: center;
-    justify-content: center; height: 100%; text-align: center;
-    padding: 40px 20px;
-  }
-  .welcome-logo {
-    width: 56px; height: 56px; background: linear-gradient(135deg, var(--accent), #7c3aed);
-    border-radius: 16px; display: flex; align-items: center; justify-content: center;
-    font-size: 28px; font-weight: 700; color: #fff; margin-bottom: 24px;
-  }
+  .welcome { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; padding: 40px 20px; }
+  .welcome-logo { width: 56px; height: 56px; background: linear-gradient(135deg,var(--accent),#7c3aed); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 700; color: #fff; margin-bottom: 24px; }
   .welcome h1 { font-size: 22px; font-weight: 600; margin-bottom: 8px; }
   .welcome p { color: var(--text-secondary); font-size: 14px; max-width: 480px; line-height: 1.6; margin-bottom: 32px; }
   .suggestions { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 520px; }
-  .suggestion-btn {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 12px 16px; color: var(--text-secondary);
-    font-size: 13px; cursor: pointer; text-align: left;
-    transition: all .15s; font-family: var(--font);
-  }
+  .suggestion-btn { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; color: var(--text-secondary); font-size: 13px; cursor: pointer; text-align: left; transition: all .15s; font-family: var(--font); }
   .suggestion-btn:hover { background: var(--surface-hover); border-color: var(--border-light); color: var(--text); }
   .suggestion-btn .label { color: var(--text-muted); font-size: 11px; display: block; margin-bottom: 2px; }
 
-  /* Streaming cursor */
-  .stream-cursor::after {
-    content: ''; display: inline-block; width: 8px; height: 16px;
-    background: var(--accent); margin-left: 2px;
-    animation: blink 1s step-end infinite; vertical-align: text-bottom;
-  }
-  @keyframes blink { 50% { opacity: 0; } }
-
-  /* Input Area */
-  /* File chips */
-  .file-chips {
-    display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 4px 4px; flex-shrink: 0;
-  }
-  .file-chip {
-    display: flex; align-items: center; gap: 5px;
-    background: var(--file-chip-bg); border: 1px solid var(--file-chip-border);
-    border-radius: 6px; padding: 3px 8px; font-size: 12px;
-    color: var(--file-icon-color); max-width: 200px;
-  }
-  .file-chip .filename {
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;
-  }
+  /* Input */
+  .file-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 4px 4px; flex-shrink: 0; }
+  .file-chip { display: flex; align-items: center; gap: 5px; background: var(--file-chip-bg); border: 1px solid var(--file-chip-border); border-radius: 6px; padding: 3px 8px; font-size: 12px; color: var(--file-icon-color); max-width: 200px; }
+  .file-chip .filename { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
   .file-chip .filesize { color: var(--text-muted); flex-shrink: 0; }
-  .file-chip .remove-file {
-    background: none; border: none; color: var(--text-muted); cursor: pointer;
-    font-size: 14px; padding: 0 2px; line-height: 1;
-  }
+  .file-chip .remove-file { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px; padding: 0 2px; line-height: 1; }
   .file-chip .remove-file:hover { color: var(--danger); }
   .file-chip .icon { font-size: 13px; }
 
-  .input-area { padding: 8px 20px 20px; flex-shrink: 0; background: linear-gradient(transparent, var(--bg) 30%); }
-  .input-wrapper {
-    display: flex; align-items: flex-end; gap: 8px;
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius-lg); padding: 10px 10px 10px 16px;
-    transition: border-color .2s;
-  }
+  .input-area { padding: 8px 20px 12px; flex-shrink: 0; background: linear-gradient(transparent,var(--bg) 30%); }
+  .input-wrapper { display: flex; align-items: flex-end; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 10px 10px 10px 16px; transition: border-color .2s; }
   .input-wrapper:focus-within { border-color: var(--accent); }
-  textarea {
-    flex: 1; background: none; border: none; outline: none;
-    color: var(--text); font-family: var(--font); font-size: 14px;
-    resize: none; min-height: 22px; max-height: 200px;
-    line-height: 1.5;
-  }
+  textarea { flex: 1; background: none; border: none; outline: none; color: var(--text); font-family: var(--font); font-size: 14px; resize: none; min-height: 22px; max-height: 200px; line-height: 1.5; }
   textarea::placeholder { color: var(--text-muted); }
-  .btn-attach {
-    width: 32px; height: 32px; border-radius: 50%;
-    background: transparent; color: var(--text-muted); border: none;
-    cursor: pointer; display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0; transition: all .15s; font-size: 16px;
-  }
+  .btn-attach { width: 32px; height: 32px; border-radius: 50%; background: transparent; color: var(--text-muted); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all .15s; font-size: 16px; }
   .btn-attach:hover { background: var(--surface-hover); color: var(--text); }
-  .btn-send {
-    width: 36px; height: 36px; border-radius: 50%;
-    background: var(--accent); color: #fff; border: none;
-    cursor: pointer; display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0; transition: all .15s; font-size: 16px;
-  }
+  .btn-send { width: 36px; height: 36px; border-radius: 50%; background: var(--accent); color: #fff; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all .15s; font-size: 16px; }
   .btn-send:hover { background: var(--accent-hover); }
   .btn-send:disabled { background: var(--surface-hover); color: var(--text-muted); cursor: not-allowed; }
-  .input-footer {
-    display: flex; justify-content: space-between; padding: 6px 4px 0; font-size: 11px; color: var(--text-muted);
-  }
+  .input-footer { display: flex; justify-content: space-between; padding: 6px 4px 0; font-size: 11px; color: var(--text-muted); }
 
-  /* Tasks */
-  .task-input-row {
-    display: flex; gap: 8px; margin-bottom: 12px;
-  }
-  .task-input-row input {
-    flex: 1; background: var(--bg); border: 1px solid var(--border);
-    border-radius: var(--radius-sm); padding: 9px 12px;
-    color: var(--text); font-size: 13px; font-family: var(--font);
-  }
+  /* Drop overlay */
+  .drop-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(10,10,12,0.85); border: 2px dashed var(--accent); z-index: 1000; display: none; align-items: center; justify-content: center; pointer-events: none; }
+  .drop-overlay.show { display: flex; }
+  .drop-overlay span { font-size: 18px; color: var(--accent); font-weight: 500; }
+
+  /* Toast */
+  .toast { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: var(--surface); border: 1px solid var(--border); padding: 8px 20px; border-radius: 20px; font-size: 13px; color: var(--text-secondary); z-index: 100; opacity: 0; transition: opacity .3s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+
+  /* Modal */
+  .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 200; display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+  .modal-overlay.show { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); width: 90%; max-width: 520px; max-height: 80vh; overflow-y: auto; padding: 24px; }
+  .modal.wide { max-width: 640px; }
+  .modal h2 { font-size: 17px; font-weight: 600; margin-bottom: 16px; color: var(--text); }
+  .modal-close { float: right; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 20px; }
+  .modal-close:hover { color: var(--text); }
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; font-size: 12px; font-weight: 500; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px; }
+  .form-group select, .form-group input, .form-group textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 12px; color: var(--text); font-size: 13px; font-family: var(--font); }
+  .form-group select:focus, .form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--accent); }
+  .form-group select option { background: var(--surface); }
+  .form-group .hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+  .form-group .status-badge { display: inline-block; font-size: 11px; padding: 2px 10px; border-radius: 20px; margin-top: 4px; }
+  .form-group .status-badge.ok { background: #064e3b; color: var(--success); }
+  .form-group .status-badge.warn { background: #451a03; color: #fbbf24; }
+  .form-group .status-badge.err { background: #450a0a; color: #fca5a5; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+  .btn-primary { background: var(--accent); color: #fff; border: none; border-radius: var(--radius-sm); padding: 8px 20px; font-size: 13px; cursor: pointer; font-family: var(--font); }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-secondary { background: var(--surface-hover); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 20px; font-size: 13px; cursor: pointer; font-family: var(--font); }
+  .btn-secondary:hover { background: var(--border); }
+  .btn-sm { font-size: 12px; padding: 5px 12px; }
+
+  /* Task styles */
+  .task-input-row { display: flex; gap: 8px; margin-bottom: 12px; }
+  .task-input-row input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 12px; color: var(--text); font-size: 13px; font-family: var(--font); }
   .task-input-row input:focus { outline: none; border-color: var(--accent); }
-  .task-list { max-height: 50vh; overflow-y: auto; }
-  .task-list::-webkit-scrollbar { width: 6px; }
-  .task-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-  .task-item {
-    display: flex; align-items: center; gap: 10px;
-    padding: 10px 12px; border-bottom: 1px solid var(--border);
-    transition: background .15s;
-  }
-  .task-item:hover { background: var(--surface-hover); }
+  .task-list { max-height: 40vh; overflow-y: auto; }
+  .task-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--border); }
   .task-item:last-child { border-bottom: none; }
-  .task-check {
-    width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border);
-    cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
-    transition: all .2s; font-size: 12px; color: transparent;
-  }
-  .task-check.done { border-color: #4ade80; background: #064e3b; color: #4ade80; }
+  .task-check { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border); cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; color: transparent; transition: all .2s; }
+  .task-check.done { border-color: var(--success); background: #064e3b; color: var(--success); }
   .task-check.pending { border-color: var(--text-muted); }
   .task-check.in_progress { border-color: #fbbf24; }
   .task-body { flex: 1; min-width: 0; }
@@ -345,136 +238,71 @@
   .task-body .task-title.done { text-decoration: line-through; color: var(--text-muted); }
   .task-body .task-desc { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
   .task-body .task-meta { font-size: 10px; color: var(--text-muted); margin-top: 4px; }
-  .task-del {
-    background: none; border: none; color: var(--text-muted); cursor: pointer;
-    font-size: 16px; padding: 4px; opacity: 0; transition: all .15s;
-  }
-  .task-item:hover .task-del { opacity: 1; }
-  .task-del:hover { color: var(--danger); }
-  .task-filters {
-    display: flex; gap: 6px; margin-bottom: 12px;
-  }
-  .task-filter {
-    font-size: 12px; padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border);
-    background: transparent; color: var(--text-muted); cursor: pointer;
-    font-family: var(--font); transition: all .15s;
-  }
+  .task-del { background: none; border: none; color: transparent; cursor: pointer; font-size: 16px; padding: 4px; }
+  .task-item:hover .task-del { color: var(--text-muted); }
+  .task-del:hover { color: var(--danger) !important; }
+  .task-filters { display: flex; gap: 6px; margin-bottom: 12px; }
+  .task-filter { font-size: 12px; padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); cursor: pointer; font-family: var(--font); }
   .task-filter:hover { border-color: var(--accent); color: var(--text); }
   .task-filter.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-  .task-count {
-    font-size: 11px; color: var(--text-muted); text-align: center; padding: 8px;
-  }
+  .task-count { font-size: 11px; color: var(--text-muted); text-align: center; padding: 8px; }
 
-  /* Skills */
-  .skills-grid {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 10px; max-height: 50vh; overflow-y: auto; padding: 4px 0;
-  }
-  .skills-grid::-webkit-scrollbar { width: 6px; }
-  .skills-grid::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-  .skill-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius-sm); padding: 12px 14px;
-    cursor: pointer; transition: all .15s;
-  }
+  /* Cron styles */
+  .cron-list { max-height: 40vh; overflow-y: auto; }
+  .cron-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--border); }
+  .cron-item:last-child { border-bottom: none; }
+  .cron-body { flex: 1; min-width: 0; }
+  .cron-body .cron-title { font-size: 13px; color: var(--text); }
+  .cron-body .cron-schedule { font-size: 11px; color: var(--accent); font-family: var(--font-mono); margin-top: 2px; }
+  .cron-body .cron-desc { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .cron-del { background: none; border: none; color: transparent; cursor: pointer; font-size: 16px; padding: 4px; }
+  .cron-item:hover .cron-del { color: var(--text-muted); }
+  .cron-del:hover { color: var(--danger) !important; }
+  .cron-toggle { width: 32px; height: 18px; border-radius: 10px; border: none; cursor: pointer; position: relative; transition: all .2s; flex-shrink: 0; background: var(--border); }
+  .cron-toggle.on { background: var(--accent); }
+  .cron-toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: transform .2s; }
+  .cron-toggle.on::after { transform: translateX(14px); }
+
+  /* Skills grid */
+  .skills-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(240px,1fr)); gap: 10px; max-height: 45vh; overflow-y: auto; padding: 4px 0; }
+  .skill-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; cursor: pointer; }
   .skill-card:hover { border-color: var(--accent); background: var(--surface-hover); }
-  .skill-card .skill-cat {
-    font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;
-    color: var(--accent); margin-bottom: 4px;
-  }
+  .skill-card .skill-cat { font-size: 10px; text-transform: uppercase; color: var(--accent); margin-bottom: 4px; }
   .skill-card .skill-name { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
   .skill-card .skill-desc { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
   .skill-card .skill-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
-  .skill-card .skill-tag {
-    font-size: 10px; background: var(--file-chip-bg); color: var(--file-icon-color);
-    padding: 1px 7px; border-radius: 10px; border: 1px solid var(--file-chip-border);
-  }
-  .skills-search {
-    width: 100%; background: var(--bg); border: 1px solid var(--border);
-    border-radius: var(--radius-sm); padding: 10px 12px;
-    color: var(--text); font-size: 13px; font-family: var(--font); margin-bottom: 12px;
-  }
+  .skill-card .skill-tag { font-size: 10px; background: var(--file-chip-bg); color: var(--file-icon-color); padding: 1px 7px; border-radius: 10px; border: 1px solid var(--file-chip-border); }
+  .skills-search { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; color: var(--text); font-size: 13px; font-family: var(--font); margin-bottom: 12px; }
   .skills-search:focus { outline: none; border-color: var(--accent); }
-  .skills-empty {
-    text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 13px;
-  }
+  .skills-empty { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 13px; }
   .skill-detail { padding: 12px 0; }
   .skill-detail h3 { font-size: 15px; color: var(--text); margin-bottom: 8px; }
-  .skill-detail .skill-meta { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
-  .skill-detail pre {
-    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
-    padding: 14px; font-size: 13px; line-height: 1.5; max-height: 40vh; overflow-y: auto;
-    font-family: var(--font-mono); color: var(--text-secondary); white-space: pre-wrap;
-  }
-  .skill-back {
-    background: none; border: none; color: var(--accent); cursor: pointer;
-    font-size: 13px; font-family: var(--font); padding: 0; margin-bottom: 12px;
-  }
+  .skill-detail pre { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; font-size: 13px; line-height: 1.5; max-height: 35vh; overflow-y: auto; font-family: var(--font-mono); color: var(--text-secondary); white-space: pre-wrap; }
+  .skill-back { background: none; border: none; color: var(--accent); cursor: pointer; font-size: 13px; font-family: var(--font); padding: 0; margin-bottom: 12px; }
   .skill-back:hover { text-decoration: underline; }
 
-  /* Settings Modal */
-  .modal-overlay {
-    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.6); z-index: 200;
-    display: none; align-items: center; justify-content: center;
-    backdrop-filter: blur(4px);
-  }
-  .modal-overlay.show { display: flex; }
-  .modal {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius-lg); width: 90%; max-width: 480px;
-    max-height: 80vh; overflow-y: auto; padding: 24px;
-  }
-  .modal h2 { font-size: 17px; font-weight: 600; margin-bottom: 20px; color: var(--text); }
-  .modal-close {
-    float: right; background: none; border: none; color: var(--text-muted);
-    cursor: pointer; font-size: 20px; transition: color .15s;
-  }
-  .modal-close:hover { color: var(--text); }
+  /* Log viewer */
+  .log-toolbar { display: flex; gap: 8px; margin-bottom: 12px; }
+  .log-toolbar select, .log-toolbar input { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 7px 10px; color: var(--text); font-size: 12px; font-family: var(--font); }
+  .log-toolbar select:focus, .log-toolbar input:focus { outline: none; border-color: var(--accent); }
+  .log-viewer { background: #0d0d12; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; max-height: 45vh; overflow-y: auto; font-family: var(--font-mono); font-size: 12px; line-height: 1.6; color: var(--text-secondary); white-space: pre-wrap; }
 
-  .form-group { margin-bottom: 16px; }
-  .form-group label {
-    display: block; font-size: 12px; font-weight: 500;
-    color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;
-  }
-  .form-group select, .form-group input {
-    width: 100%; background: var(--bg); border: 1px solid var(--border);
-    border-radius: var(--radius-sm); padding: 10px 12px;
-    color: var(--text); font-size: 13px; font-family: var(--font);
-    transition: border-color .2s;
-  }
-  .form-group select:focus, .form-group input:focus {
-    outline: none; border-color: var(--accent);
-  }
-  .form-group select option { background: var(--surface); }
-  .form-group .hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
-  .form-group .status-badge {
-    display: inline-block; font-size: 11px; padding: 2px 10px;
-    border-radius: 20px; margin-top: 4px;
-  }
-  .form-group .status-badge.ok { background: #064e3b; color: #6ee7b7; }
-  .form-group .status-badge.warn { background: #451a03; color: #fbbf24; }
-  .form-group .status-badge.err { background: #450a0a; color: #fca5a5; }
+  /* Model info */
+  .model-info-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 12px; }
+  .model-info-card .row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; border-bottom: 1px solid var(--border); }
+  .model-info-card .row:last-child { border-bottom: none; }
+  .model-info-card .row .label { color: var(--text-muted); }
+  .model-info-card .row .value { color: var(--text); }
 
-  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 24px; }
-  .btn-primary {
-    background: var(--accent); color: #fff; border: none;
-    border-radius: var(--radius-sm); padding: 8px 20px; font-size: 13px;
-    cursor: pointer; font-family: var(--font); transition: background .15s;
-  }
-  .btn-primary:hover { background: var(--accent-hover); }
-  .btn-secondary {
-    background: var(--surface-hover); color: var(--text); border: 1px solid var(--border);
-    border-radius: var(--radius-sm); padding: 8px 20px; font-size: 13px;
-    cursor: pointer; font-family: var(--font); transition: background .15s;
-  }
-  .btn-secondary:hover { background: var(--border); }
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+  .tab { font-size: 13px; padding: 6px 14px; border-radius: 6px; border: none; background: transparent; color: var(--text-muted); cursor: pointer; font-family: var(--font); }
+  .tab:hover { color: var(--text); background: var(--surface-hover); }
+  .tab.active { color: var(--accent); background: rgba(192,132,252,0.12); }
 
-  @media (max-width: 600px) {
-    header { padding: 10px 12px; }
-    .msg-group { padding: 16px 12px 0; }
-    .input-area { padding: 8px 12px 12px; }
-    .msg-content { padding-left: 0; }
+  @media (max-width: 680px) {
+    .sidebar { position: fixed; z-index: 50; height: 100vh; background: var(--bg); }
+    .sidebar.hidden { transform: translateX(-100%); }
   }
 </style>
 </head>
@@ -483,1048 +311,645 @@
   <div class="toast" id="toast"></div>
   <div class="drop-overlay" id="dropOverlay"><span>&#x1F4CE; 拖放文件到此处上传</span></div>
 
-  <header>
-    <div class="brand">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header"><h2>&#x1F4AC; 对话历史</h2></div>
+    <div class="sidebar-list" id="sessionList"></div>
+    <div class="sidebar-footer">
+      <button onclick="newSession()">&#x2795; 新对话</button>
+      <button onclick="saveSession()">&#x1F4BE; 保存</button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="main-header">
+      <button class="btn-icon" id="sidebarToggle" onclick="toggleSidebar()" title="切换侧栏">&#x2630;</button>
       <div class="logo">C</div>
       <span class="brand-text">Claude Code</span>
       <span class="model-badge" id="modelBadge">加载中...</span>
+      <div class="spacer"></div>
+      <div class="header-actions">
+        <button class="btn-icon" onclick="openTasks()" title="任务">&#x2611;</button>
+        <button class="btn-icon" onclick="openSkills()" title="技能">&#x1F9E0;</button>
+        <button class="btn-icon" onclick="openCron()" title="定时">&#x23F0;</button>
+        <button class="btn-icon" onclick="openModels()" title="模型">&#x1F916;</button>
+        <button class="btn-icon" onclick="openLogs()" title="日志">&#x1F4DD;</button>
+        <button class="btn-icon" onclick="openSettings()" title="设置">&#x2699;</button>
+        <button class="btn-icon" onclick="clearChat()" title="新对话">&#x2795;</button>
+      </div>
     </div>
-    <div class="header-actions">
-      <button class="btn-icon" onclick="openTasks()" title="任务">&#x2611;</button>
-      <button class="btn-icon" onclick="openSkills()" title="技能">&#x1F9E0;</button>
-      <button class="btn-icon" onclick="openSettings()" title="设置">&#x2699;</button>
-      <button class="btn-icon" onclick="clearChat()" title="新对话">&#x2795;</button>
-    </div>
-  </header>
 
-  <!-- Skills Modal -->
-  <div class="modal-overlay" id="skillsModal">
-    <div class="modal" style="max-width:640px">
-      <button class="modal-close" onclick="closeSkills()">&times;</button>
-      <h2 id="skillsTitle">技能管理</h2>
-      <input type="text" class="skills-search" id="skillsSearch" placeholder="搜索技能..." oninput="renderSkills()">
-      <div id="skillsContent"></div>
+    <div id="chat">
+      <div class="welcome" id="welcome">
+        <div class="welcome-logo">C</div>
+        <h1>有什么可以帮助你的？</h1>
+        <p>AI 助手，支持代码、分析、文件上传。</p>
+        <div class="suggestions">
+          <button class="suggestion-btn" onclick="suggest('用 Python 写一个快速排序算法')"><span class="label">&#x1F4DD 代码</span>用 Python 写一个快速排序算法</button>
+          <button class="suggestion-btn" onclick="suggest('解释 React 中 useState 和 useEffect 的区别')"><span class="label">&#x1F4A1 解释</span>解释 React 中 useState 和 useEffect 的区别</button>
+          <button class="suggestion-btn" onclick="suggest('帮我分析这段代码：\nfunction fib(n) {\n  if (n <= 1) return n;\n  return fib(n-1) + fib(n-2);\n}')"><span class="label">&#x1F50D 分析</span>帮我分析这段代码</button>
+        </div>
+      </div>
     </div>
-  </div>
 
-  <!-- Tasks Modal -->
-  <div class="modal-overlay" id="tasksModal">
-    <div class="modal" style="max-width:520px">
-      <button class="modal-close" onclick="closeTasks()">&times;</button>
-      <h2>任务管理 <span style="font-size:12px;color:var(--text-muted);font-weight:400" id="taskStatusCount"></span></h2>
-      <div class="task-input-row">
-        <input type="text" id="taskInput" placeholder="添加新任务..." onkeydown="if(event.key==='Enter') addTask()">
-        <button class="btn-primary" onclick="addTask()" style="padding:8px 16px">添加</button>
+    <div class="input-area">
+      <div class="file-chips" id="fileChips"></div>
+      <div class="input-wrapper">
+        <input type="file" id="fileInput" multiple hidden>
+        <button class="btn-attach" id="attachBtn" title="上传文件">&#x1F4CE;</button>
+        <textarea id="input" rows="1" placeholder="输入消息..." autofocus></textarea>
+        <button class="btn-send" id="sendBtn" disabled>&#x2191;</button>
       </div>
-      <div class="task-filters" id="taskFilters">
-        <button class="task-filter active" data-filter="all" onclick="setTaskFilter('all')">全部</button>
-        <button class="task-filter" data-filter="pending" onclick="setTaskFilter('pending')">待办</button>
-        <button class="task-filter" data-filter="in_progress" onclick="setTaskFilter('in_progress')">进行中</button>
-        <button class="task-filter" data-filter="done" onclick="setTaskFilter('done')">已完成</button>
-      </div>
-      <div class="task-list" id="taskList"></div>
-    </div>
-  </div>
-
-  <!-- Settings Modal -->
-  <div class="modal-overlay" id="settingsModal">
-    <div class="modal">
-      <button class="modal-close" onclick="closeSettings()">&times;</button>
-      <h2>设置</h2>
-      <div class="form-group">
-        <label>模型提供商</label>
-        <select id="cfgProvider" onchange="onProviderChange()">
-          <option value="deepseek">DeepSeek (Anthropic API)</option>
-          <option value="openai">OpenAI (GPT)</option>
-        </select>
-        <div class="hint" id="cfgVisionHint">&#x1F5BC; 当前模型不支持图片识别</div>
-      </div>
-      <div class="form-group" id="cfgOpenaiGroup">
-        <label>OpenAI API Key</label>
-        <input type="password" id="cfgOpenaiKey" placeholder="sk-..." autocomplete="off">
-        <div class="hint">用于 GPT-4o 看图功能</div>
-      </div>
-      <div class="form-group">
-        <label>模型名称</label>
-        <input type="text" id="cfgModel" placeholder="deepseek-chat">
-      </div>
-      <div class="form-group">
-        <label>API Base URL</label>
-        <input type="text" id="cfgBaseUrl" placeholder="https://api.deepseek.com/anthropic">
-      </div>
-      <div class="form-group">
-        <label>最大输出 Token</label>
-        <input type="number" id="cfgMaxTokens" value="4096" min="256" max="32768" step="256">
-      </div>
-      <div class="form-group">
-        <span class="status-badge ok" id="cfgStatus">&#x2705; 当前配置: DeepSeek</span>
-      </div>
-      <div class="modal-actions">
-        <button class="btn-secondary" onclick="closeSettings()">取消</button>
-        <button class="btn-primary" onclick="saveSettings()">保存</button>
+      <div class="input-footer">
+        <span>Shift+Enter 换行 | &#x1F4CE; 文件 (10MB)</span>
+        <span id="footerModel">流式输出</span> <span id="visionBadge"></span>
       </div>
     </div>
   </div>
+</div>
 
-  <div id="chat">
-    <div class="welcome" id="welcome">
-      <div class="welcome-logo">C</div>
-      <h1>有什么可以帮助你的？</h1>
-      <p>我是一个 AI 助手，可以帮你写代码、分析数据、回答问题。</p>
-      <div class="suggestions">
-        <button class="suggestion-btn" onclick="suggest('用 Python 写一个快速排序算法')">
-          <span class="label">&#x1F4DD 代码</span>
-          用 Python 写一个快速排序算法
-        </button>
-        <button class="suggestion-btn" onclick="suggest('解释 React 中 useState 和 useEffect 的区别')">
-          <span class="label">&#x1F4A1 解释</span>
-          解释 React 中 useState 和 useEffect 的区别
-        </button>
-        <button class="suggestion-btn" onclick="suggest('帮我分析这段代码：\nfunction fib(n) {\n  if (n <= 1) return n;\n  return fib(n-1) + fib(n-2);\n}')">
-          <span class="label">&#x1F50D 分析</span>
-          帮我分析这段代码
-        </button>
-      </div>
+<!-- Sessions Modal -->
+<div class="modal-overlay" id="tasksModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('tasksModal')">&times;</button>
+    <h2>&#x2611; 任务管理 <span style="font-size:12px;color:var(--text-muted);font-weight:400" id="taskStatusCount"></span></h2>
+    <div class="task-input-row">
+      <input type="text" id="taskInput" placeholder="添加新任务..." onkeydown="if(event.key==='Enter') addTask()">
+      <button class="btn-primary btn-sm" onclick="addTask()">添加</button>
+    </div>
+    <div class="task-filters" id="taskFilters">
+      <button class="task-filter active" data-filter="all" onclick="setTaskFilter('all')">全部</button>
+      <button class="task-filter" data-filter="pending" onclick="setTaskFilter('pending')">待办</button>
+      <button class="task-filter" data-filter="in_progress" onclick="setTaskFilter('in_progress')">进行中</button>
+      <button class="task-filter" data-filter="done" onclick="setTaskFilter('done')">已完成</button>
+    </div>
+    <div class="task-list" id="taskList"></div>
+  </div>
+</div>
+
+<!-- Skills Modal -->
+<div class="modal-overlay" id="skillsModal">
+  <div class="modal wide">
+    <button class="modal-close" onclick="closeModal('skillsModal')">&times;</button>
+    <h2>&#x1F9E0; 技能管理</h2>
+    <input type="text" class="skills-search" id="skillsSearch" placeholder="搜索技能..." oninput="renderSkills()">
+    <div id="skillsContent"></div>
+  </div>
+</div>
+
+<!-- Cron Modal -->
+<div class="modal-overlay" id="cronModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('cronModal')">&times;</button>
+    <h2>&#x23F0; 定时任务</h2>
+    <div class="task-input-row">
+      <input type="text" id="cronTitle" placeholder="任务说明..." style="flex:2">
+      <input type="text" id="cronSchedule" placeholder="cron 表达式 (*/5 * * * *)" style="flex:3" title="分 时 日 月 周">
+      <button class="btn-primary btn-sm" onclick="addCronJob()">添加</button>
+    </div>
+    <div class="form-group"><label>提示内容</label>
+      <textarea id="cronPrompt" rows="2" placeholder="定时发送的提示内容..." style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 12px;color:var(--text);font-size:13px;font-family:var(--font);width:100%"></textarea>
+    </div>
+    <div class="cron-list" id="cronList"></div>
+    <div class="task-count" style="font-size:10px;color:var(--text-muted)">cron 格式: 分 时 日 月 周 (如 */5 * * * * = 每5分钟)</div>
+  </div>
+</div>
+
+<!-- Models Modal -->
+<div class="modal-overlay" id="modelsModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modelsModal')">&times;</button>
+    <h2>&#x1F916; 模型信息</h2>
+    <div id="modelsContent"></div>
+  </div>
+</div>
+
+<!-- Logs Modal -->
+<div class="modal-overlay" id="logsModal">
+  <div class="modal wide">
+    <button class="modal-close" onclick="closeModal('logsModal')">&times;</button>
+    <h2>&#x1F4DD; 日志</h2>
+    <div class="log-toolbar" id="logToolbar"></div>
+    <div class="log-viewer" id="logViewer"><div class="task-count">加载中...</div></div>
+    <div class="modal-actions" style="margin-top:12px">
+      <button class="btn-secondary btn-sm" onclick="refreshLogs()">&#x21BB; 刷新</button>
     </div>
   </div>
+</div>
 
-  <div class="input-area">
-    <div class="file-chips" id="fileChips"></div>
-    <div class="input-wrapper">
-      <input type="file" id="fileInput" multiple hidden>
-      <button class="btn-attach" id="attachBtn" title="上传文件">&#x1F4CE;</button>
-      <textarea id="input" rows="1" placeholder="输入消息..." autofocus></textarea>
-      <button class="btn-send" id="sendBtn" disabled>&#x2191;</button>
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('settingsModal')">&times;</button>
+    <h2>&#x2699; 设置</h2>
+    <div class="form-group">
+      <label>模型提供商</label>
+      <select id="cfgProvider" onchange="onProviderChange()">
+        <option value="deepseek">DeepSeek</option>
+        <option value="openai">OpenAI (GPT)</option>
+      </select>
+      <div class="hint" id="cfgVisionHint">&#x1F5BC; 当前模型不支持图片识别</div>
     </div>
-    <div class="input-footer">
-      <span>Shift + Enter 换行 | &#x1F4CE; 上传文件 (最大 10MB)</span>
-      <span id="footerModel">流式输出</span> | <span id="visionBadge"></span>
+    <div class="form-group" id="cfgOpenaiGroup" style="display:none">
+      <label>OpenAI API Key</label>
+      <input type="password" id="cfgOpenaiKey" placeholder="sk-..." autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label>模型名称</label>
+      <input type="text" id="cfgModel" placeholder="deepseek-chat">
+    </div>
+    <div class="form-group">
+      <label>API Base URL</label>
+      <input type="text" id="cfgBaseUrl" placeholder="https://api.deepseek.com/anthropic">
+    </div>
+    <div class="form-group">
+      <label>最大 Token</label>
+      <input type="number" id="cfgMaxTokens" value="4096" min="256" max="32768" step="256">
+    </div>
+    <div class="form-group">
+      <span class="status-badge ok" id="cfgStatus">&#x2705; 当前配置</span>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('settingsModal')">取消</button>
+      <button class="btn-primary" onclick="saveSettings()">保存</button>
     </div>
   </div>
 </div>
 
 <script>
 // ============ Syntax Highlighting ============
-const KEYWORDS = '\\b(function|const|let|var|if|else|for|while|do|return|import|export|from|class|new|this|async|await|try|catch|throw|extends|super|typeof|instanceof|in|of|def|if|elif|else|for|while|import|from|class|return|yield|lambda|with|as|pass|break|continue|and|or|not|True|False|None|int|float|str|list|dict|set|print|range|len|map|filter|fn|let|mut|if|else|for|while|return|fn|pub|use|struct|enum|impl|match|true|false|package|func|defer|go|select|chan|interface|type|struct|nil|\\\$\\w+)\\b';
-
+const KEYWORDS = '\\b(function|const|let|var|if|else|for|while|do|return|import|export|from|class|new|this|async|await|try|catch|throw|extends|super|typeof|instanceof|in|of|def|elif|for|import|class|return|yield|lambda|with|as|pass|break|continue|and|or|not|True|False|None|fn|let|mut|if|else|for|while|return|fn|pub|use|struct|enum|impl|match|true|false|package|func|defer|go|select|chan|interface|type|struct|nil|\\\$\\w+)\\b';
 function highlightCode(code, lang) {
-  const langMap = {
-    js: 'javascript', javascript: 'javascript', ts: 'typescript', typescript: 'typescript',
-    py: 'python', python: 'python', rb: 'ruby', ruby: 'ruby',
-    go: 'go', rust: 'rust', rs: 'rust', java: 'java',
-    c: 'c', cpp: 'cpp', cs: 'csharp', csharp: 'csharp',
-    html: 'html', css: 'css', scss: 'scss', sql: 'sql',
-    sh: 'bash', bash: 'bash', zsh: 'bash', json: 'json', xml: 'xml',
-    yaml: 'yaml', yml: 'yaml', md: 'markdown', markdown: 'markdown',
-    php: 'php', swift: 'swift', kt: 'kotlin', kotlin: 'kotlin',
-  };
-  const dl = (langMap[lang] || lang || '').toLowerCase();
-
-  let highlighted = escapeHtml(code);
-
-  // String (double quote)
-  highlighted = highlighted.replace(/"([^"\\]*(\\.[^"\\]*)*)"/g, '<span class="token string">"$1"</span>');
-  // String (single quote)
-  highlighted = highlighted.replace(/'([^'\\]*(\\.[^'\\]*)*)'/g, "<span class='token string'>'$1'</span>");
-  // Template literals
-  highlighted = highlighted.replace(/`([^`\\]*(\\.[^`\\]*)*)`/g, '<span class="token string">`$1`</span>');
-  // Comments (//)
-  highlighted = highlighted.replace(/\/\/.*/g, '<span class="token comment">$&</span>');
-  // Comments (#) - python, bash, ruby
-  highlighted = highlighted.replace(/#.*/g, '<span class="token comment">$&</span>');
-  // Numbers
-  highlighted = highlighted.replace(/\b(\d+(\.\d+)?)\b/g, '<span class="token number">$1</span>');
-  // Keywords
-  highlighted = highlighted.replace(new RegExp(KEYWORDS, 'g'), '<span class="token keyword">$1</span>');
-
-  // Tag/builtin for HTML
-  if (dl === 'html') {
-    highlighted = highlighted.replace(/&lt;\/?(\w+)/g, (m) => '&lt;<span class="token tag">' + m.slice(4) + '</span>');
-    highlighted = highlighted.replace(/(\s)(\w+)=/g, '$1<span class="token attr">$2</span>=');
-  }
-
-  return highlighted;
+  const lm = {js:'javascript',javascript:'javascript',ts:'typescript',typescript:'typescript',py:'python',python:'python',go:'go',rust:'rust',rs:'rust',java:'java',html:'html',css:'css',sql:'sql',sh:'bash',bash:'bash',json:'json',yaml:'yaml',yml:'yaml'};
+  const dl = (lm[lang]||lang||'').toLowerCase();
+  let h = escapeHtml(code);
+  h = h.replace(/"([^"\\]*(\\.[^"\\]*)*)"/g,'<span class="token string">"$1"</span>');
+  h = h.replace(/'([^'\\]*(\\.[^'\\]*)*)'/g,"<span class='token string'>$1</span>");
+  h = h.replace(/`([^`\\]*(\\.[^`\\]*)*)`/g,'<span class="token string">`$1`</span>');
+  h = h.replace(/\/\/.*/g,'<span class="token comment">$&</span>');
+  h = h.replace(/#.*/g,'<span class="token comment">$&</span>');
+  h = h.replace(/\b(\d+(\.\d+)?)\b/g,'<span class="token number">$1</span>');
+  h = h.replace(new RegExp(KEYWORDS,'g'),'<span class="token keyword">$1</span>');
+  if (dl==='html') { h = h.replace(/&lt;\/?(\w+)/g,m=>'&lt;<span class="token tag">'+m.slice(4)+'</span>'); h = h.replace(/(\s)(\w+)=/g,'$1<span class="token attr">$2</span>='); }
+  return h;
 }
+function escapeHtml(t) { const d=document.createElement('div'); d.textContent=t; return d.innerHTML; }
 
-function escapeHtml(text) {
-  const d = document.createElement('div');
-  d.textContent = text;
-  return d.innerHTML;
-}
+function showToast(m) { const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2000); }
 
-// ============ Toast ============
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2000);
-}
-
-// ============ Markdown ============
 function markdownToHtml(text) {
-  let html = text;
-
-  // Code blocks
-  html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
-    const trimmed = code.replace(/\n$/, '');
-    const escaped = escapeHtml(trimmed);
-    const highlighted = highlightCode(trimmed, lang);
-    return `<pre><div class="code-header"><span class="lang-label">${lang || 'code'}</span><div class="code-actions"><button onclick="copyCodeBlock(this)">复制</button></div></div><code>${highlighted}</code></pre>`;
-  });
-
-  // Inline code
-  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-
-  // Headers
-  html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
-  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
-
-  // Bold & italic
-  html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
-  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-  html = html.replace(/~~~(.+?)~~~/g, '<del>$1</del>');
-
-  // Links
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
-
-  // Blockquotes
-  html = html.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
-
-  // Horizontal rule
-  html = html.replace(/^---$/gm, '<hr>');
-
-  // Lists - unordered
-  html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
-  html = html.replace(/(<li>.*<\/li>\n?)+/g, (m) => m.includes('<ul>') ? m : '<ul>' + m + '</ul>');
-
-  // Lists - ordered
-  html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
-  html = html.replace(/(<li>.*<\/li>\n?)+/g, (m) => {
-    if (m.includes('<ul>') || m.includes('<ol>')) return m;
-    return '<ol>' + m + '</ol>';
-  });
-
-  // Paragraphs
-  html = html.replace(/\n\n/g, '</p><p>');
-  html = html.replace(/\n/g, '<br>');
-
-  return '<p>' + html + '</p>';
+  let h = text;
+  h = h.replace(/```(\w*)\n?([\s\S]*?)```/g,(_,l,c)=>{const t=c.replace(/\n$/,'');return`<pre><div class="code-header"><span>${l||'code'}</span><div class="code-actions"><button onclick="copyCodeBlock(this)">复制</button></div></div><code>${highlightCode(t,l)}</code></pre>`;});
+  h = h.replace(/`([^`]+)`/g,'<code>$1</code>');
+  h = h.replace(/^#### (.+)$/gm,'<h4>$1</h4>'); h = h.replace(/^### (.+)$/gm,'<h3>$1</h3>');
+  h = h.replace(/^## (.+)$/gm,'<h2>$1</h2>'); h = h.replace(/^# (.+)$/gm,'<h1>$1</h1>');
+  h = h.replace(/\*\*\*(.+?)\*\*\*/g,'<strong><em>$1</em></strong>');
+  h = h.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  h = h.replace(/\*(.+?)\*/g,'<em>$1</em>');
+  h = h.replace(/~~~(.+?)~~~/g,'<del>$1</del>');
+  h = h.replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
+  h = h.replace(/^&gt; (.+)$/gm,'<blockquote>$1</blockquote>');
+  h = h.replace(/^---$/gm,'<hr>');
+  h = h.replace(/^- (.+)$/gm,'<li>$1</li>');
+  h = h.replace(/(<li>.*<\/li>\n?)+/g,m=>m.includes('<ul>')?m:'<ul>'+m+'</ul>');
+  h = h.replace(/^\d+\. (.+)$/gm,'<li>$1</li>');
+  h = h.replace(/(<li>.*<\/li>\n?)+/g,m=>{if(m.includes('<ul>')||m.includes('<ol>'))return m;return '<ol>'+m+'</ol>';});
+  h = h.replace(/\n\n/g,'</p><p>'); h = h.replace(/\n/g,'<br>');
+  return '<p>'+h+'</p>';
 }
 
-// ============ Chat ============
+// ============ State ============
 const chatEl = document.getElementById('chat');
 const inputEl = document.getElementById('input');
 const sendBtn = document.getElementById('sendBtn');
 const welcomeEl = document.getElementById('welcome');
-
-const state = {
-  history: [], streaming: false, lastUserMsg: null, controller: null,
-  pendingFiles: [], supportsVision: false, provider: 'deepseek', model: 'deepseek-chat'
-};
-
-// ============ Load Config ============
-async function loadConfig() {
-  try {
-    const res = await fetch('/api/config');
-    const config = await res.json();
-    state.provider = config.provider;
-    state.model = config.model;
-    state.supportsVision = config.supportsVision;
-    document.getElementById('modelBadge').textContent = config.model;
-    document.getElementById('footerModel').textContent = config.model;
-    if (config.supportsVision) {
-      document.getElementById('visionBadge').textContent = '支持图片';
-    }
-  } catch(e) {}
-}
-loadConfig();
-
-// ============ Settings ============
-function getSettings() {
-  try { return JSON.parse(localStorage.getItem('claude-web-settings') || '{}'); } catch(e) { return {}; }
-}
-function saveSettingsToStorage(s) {
-  localStorage.setItem('claude-web-settings', JSON.stringify(s));
-}
-
-function loadSettingsIntoForm() {
-  const s = getSettings();
-  document.getElementById('cfgProvider').value = s.provider || 'deepseek';
-  document.getElementById('cfgOpenaiKey').value = s.openaiKey || '';
-  document.getElementById('cfgModel').value = s.model || '';
-  document.getElementById('cfgBaseUrl').value = s.baseUrl || '';
-  document.getElementById('cfgMaxTokens').value = s.maxTokens || 4096;
-  onProviderChange();
-}
-
-function onProviderChange() {
-  const provider = document.getElementById('cfgProvider').value;
-  const openaiGroup = document.getElementById('cfgOpenaiGroup');
-  const modelInput = document.getElementById('cfgModel');
-  const baseUrlInput = document.getElementById('cfgBaseUrl');
-
-  openaiGroup.style.display = provider === 'openai' ? 'block' : 'none';
-
-  if (provider === 'openai') {
-    if (!modelInput.value || modelInput.value === 'deepseek-chat') {
-      modelInput.value = 'gpt-4o';
-    }
-    if (!baseUrlInput.value || baseUrlInput.value.includes('deepseek')) {
-      baseUrlInput.value = 'https://api.openai.com/v1';
-    }
-  } else {
-    if (!modelInput.value || modelInput.value === 'gpt-4o') {
-      modelInput.value = 'deepseek-chat';
-    }
-    if (!baseUrlInput.value || baseUrlInput.value === 'https://api.openai.com/v1') {
-      baseUrlInput.value = 'https://api.deepseek.com/anthropic';
-    }
-  }
-}
-
-function openSettings() {
-  loadSettingsIntoForm();
-  document.getElementById('settingsModal').classList.add('show');
-}
-
-function closeSettings() {
-  document.getElementById('settingsModal').classList.remove('show');
-}
-
-function saveSettings() {
-  const s = {
-    provider: document.getElementById('cfgProvider').value,
-    openaiKey: document.getElementById('cfgOpenaiKey').value,
-    model: document.getElementById('cfgModel').value,
-    baseUrl: document.getElementById('cfgBaseUrl').value,
-    maxTokens: parseInt(document.getElementById('cfgMaxTokens').value) || 4096,
-  };
-  saveSettingsToStorage(s);
-
-  state.provider = s.provider;
-  state.model = s.model || (s.provider === 'openai' ? 'gpt-4o' : 'deepseek-chat');
-  state.supportsVision = s.provider === 'openai';
-  state._userSettings = s;
-
-  document.getElementById('modelBadge').textContent = state.model;
-  document.getElementById('footerModel').textContent = state.model;
-  document.getElementById('visionBadge').textContent = state.supportsVision ? '支持图片' : '';
-
-  const statusEl = document.getElementById('cfgStatus');
-  statusEl.textContent = '✅ 已保存: ' + (s.provider === 'openai' ? 'OpenAI ' + (s.model || 'gpt-4o') : 'DeepSeek ' + (s.model || 'deepseek-chat'));
-  if (s.provider === 'openai' && !s.openaiKey) {
-    statusEl.className = 'status-badge warn';
-    statusEl.textContent = '⚠️ 已保存但未填 OpenAI Key';
-  } else {
-    statusEl.className = 'status-badge ok';
-  }
-
-  closeSettings();
-  showToast('设置已保存');
-}
-
-function getApiConfig() {
-  const s = getSettings();
-  return {
-    provider: s.provider || state.provider || 'deepseek',
-    model: s.model || state.model || 'deepseek-chat',
-    baseUrl: s.baseUrl || '',
-    openaiKey: s.openaiKey || '',
-    maxTokens: s.maxTokens || 4096,
-  };
-}
-
-// ============ Skills ============
-let skillsData = [];
-let userSkills = [];
-
-function loadUserSkills() {
-  try { userSkills = JSON.parse(localStorage.getItem('claude-web-user-skills') || '[]'); } catch(e) { userSkills = []; }
-}
-function saveUserSkills() {
-  localStorage.setItem('claude-web-user-skills', JSON.stringify(userSkills));
-}
-
-async function openSkills() {
-  document.getElementById('skillsTitle').textContent = '技能管理';
-  document.getElementById('skillsSearch').value = '';
-  document.getElementById('skillsModal').classList.add('show');
-  try {
-    const res = await fetch('/api/skills');
-    const data = await res.json();
-    skillsData = data.skills || [];
-  } catch(e) { skillsData = []; }
-  loadUserSkills();
-  renderSkills();
-}
-
-function closeSkills() {
-  document.getElementById('skillsModal').classList.remove('show');
-}
-
-function renderSkills() {
-  const query = (document.getElementById('skillsSearch').value || '').toLowerCase();
-  const allSkills = [
-    ...skillsData.map(s => ({ ...s, _user: false })),
-    ...userSkills.map(s => ({ ...s, _user: true })),
-  ];
-
-  const filtered = query
-    ? allSkills.filter(s =>
-        s.name?.toLowerCase().includes(query) ||
-        s.description?.toLowerCase().includes(query) ||
-        s.category?.toLowerCase().includes(query) ||
-        (s.tags || []).some(t => t.toLowerCase().includes(query))
-      )
-    : allSkills;
-
-  const container = document.getElementById('skillsContent');
-  if (filtered.length === 0) {
-    container.innerHTML = '<div class="skills-empty">没有找到匹配的技能</div>';
-    return;
-  }
-
-  container.innerHTML = `
-    <div style="display:flex;gap:8px;margin-bottom:12px">
-      <button class="btn-primary" onclick="addUserSkill()">&#x2795; 新建技能</button>
-    </div>
-    <div class="skills-grid">
-      ${filtered.map(s => {
-        const cat = s._user ? '自定义' : (s.category || '');
-        return `<div class="skill-card" onclick="viewSkill('${s._user ? 'user' : s.category}', '${s.name?.replace(/'/g, "\\'")}')">
-          <div class="skill-cat">${cat}</div>
-          <div class="skill-name">${escapeHtml(s.name)}${s._user ? ' <span style="color:var(--accent);font-size:11px">&#9998;</span>' : ''}</div>
-          <div class="skill-desc">${escapeHtml(s.description || '')}</div>
-          ${s.tags?.length ? '<div class="skill-tags">' + s.tags.map(t => '<span class="skill-tag">' + escapeHtml(t) + '</span>').join('') + '</div>' : ''}
-        </div>`;
-      }).join('')}
-    </div>
-  `;
-}
-
-async function viewSkill(source, name) {
-  const container = document.getElementById('skillsContent');
-
-  if (source === 'user') {
-    const skill = userSkills.find(s => s.name === name);
-    if (!skill) return;
-    container.innerHTML = `
-      <button class="skill-back" onclick="renderSkills()">&#x2190; 返回列表</button>
-      <div class="skill-detail">
-        <h3>${escapeHtml(skill.name)}</h3>
-        <div class="skill-meta">${escapeHtml(skill.description || '')}</div>
-        <pre>${escapeHtml(skill.body || '')}</pre>
-        <div style="margin-top:12px;display:flex;gap:8px">
-          <button class="btn-primary" onclick="applySkill('${escapeHtml(skill.name).replace(/'/g, "\\'")}')">&#x1F4CB; 使用此技能</button>
-          <button class="btn-secondary" onclick="editUserSkill('${escapeHtml(skill.name).replace(/'/g, "\\'")}')">&#x270E; 编辑</button>
-          <button class="btn-secondary" style="color:var(--danger)" onclick="deleteUserSkill('${escapeHtml(skill.name).replace(/'/g, "\\'")}')">&#x1F5D1; 删除</button>
-        </div>
-      </div>
-    `;
-  } else {
-    try {
-      const res = await fetch(`/api/skills/${source}/${name}`);
-      if (!res.ok) throw new Error('not found');
-      const data = await res.json();
-      container.innerHTML = `
-        <button class="skill-back" onclick="renderSkills()">&#x2190; 返回列表</button>
-        <div class="skill-detail">
-          <h3>${escapeHtml(data.meta?.name || name)}</h3>
-          <div class="skill-meta">${data.meta?.description || ''}${data.meta?.author ? ' &mdash; ' + escapeHtml(data.meta.author) : ''}</div>
-          <pre>${escapeHtml(data.body || '')}</pre>
-          <div style="margin-top:12px">
-            <button class="btn-primary" onclick="applySkill('${escapeHtml(data.body).replace(/'/g, "\\'")}')">&#x1F4CB; 使用此技能</button>
-          </div>
-        </div>
-      `;
-    } catch(e) {
-      container.innerHTML = '<div class="skills-empty">加载失败</div>';
-    }
-  }
-}
-
-function applySkill(body) {
-  inputEl.value = body;
-  inputEl.dispatchEvent(new Event('input'));
-  closeSkills();
-  inputEl.focus();
-}
-
-function addUserSkill() {
-  const name = prompt('技能名称:');
-  if (!name) return;
-  const description = prompt('技能描述:') || '';
-  const body = prompt('技能内容（指令/提示词）:') || '';
-  if (!body) return;
-  userSkills.push({ name, description, body, category: 'user', tags: [], _user: true });
-  saveUserSkills();
-  renderSkills();
-}
-
-function deleteUserSkill(name) {
-  if (!confirm('确定删除技能 "' + name + '"？')) return;
-  userSkills = userSkills.filter(s => s.name !== name);
-  saveUserSkills();
-  renderSkills();
-}
-
-function editUserSkill(name) {
-  const skill = userSkills.find(s => s.name === name);
-  if (!skill) return;
-  const newName = prompt('技能名称:', skill.name) || skill.name;
-  const newDesc = prompt('技能描述:', skill.description || '') || '';
-  const newBody = prompt('技能内容:', skill.body || '') || '';
-  skill.name = newName;
-  skill.description = newDesc;
-  skill.body = newBody;
-  saveUserSkills();
-  viewSkill('user', newName);
-}
-
-// Add "add skill" button below grid
-function renderSkillsWithAdd() {
-  loadUserSkills();
-  renderSkills();
-  // We append add button after grid
-}
-
-// ============ Tasks ============
-let tasks = [];
-let taskFilter = 'all';
-
-function loadTasks() {
-  try { tasks = JSON.parse(localStorage.getItem('claude-web-tasks') || '[]'); } catch(e) { tasks = []; }
-}
-function saveTasks() {
-  localStorage.setItem('claude-web-tasks', JSON.stringify(tasks));
-}
-
-function openTasks() {
-  loadTasks();
-  renderTasks();
-  document.getElementById('tasksModal').classList.add('show');
-  setTimeout(() => document.getElementById('taskInput').focus(), 100);
-}
-
-function closeTasks() {
-  document.getElementById('tasksModal').classList.remove('show');
-}
-
-function addTask() {
-  const input = document.getElementById('taskInput');
-  const title = input.value.trim();
-  if (!title) return;
-  tasks.push({
-    id: Date.now().toString(36),
-    title,
-    description: '',
-    status: 'pending',
-    createdAt: new Date().toISOString(),
-  });
-  saveTasks();
-  input.value = '';
-  renderTasks();
-  input.focus();
-}
-
-function toggleTask(id) {
-  const task = tasks.find(t => t.id === id);
-  if (!task) return;
-  if (task.status === 'done') task.status = 'pending';
-  else if (task.status === 'pending') task.status = 'in_progress';
-  else task.status = 'done';
-  saveTasks();
-  renderTasks();
-}
-
-function deleteTask(id) {
-  tasks = tasks.filter(t => t.id !== id);
-  saveTasks();
-  renderTasks();
-}
-
-function setTaskFilter(filter) {
-  taskFilter = filter;
-  document.querySelectorAll('.task-filter').forEach(b => {
-    b.classList.toggle('active', b.dataset.filter === filter);
-  });
-  renderTasks();
-}
-
-function renderTasks() {
-  const filtered = taskFilter === 'all'
-    ? tasks
-    : tasks.filter(t => t.status === taskFilter);
-
-  const total = tasks.length;
-  const done = tasks.filter(t => t.status === 'done').length;
-  document.getElementById('taskStatusCount').textContent = `(${done}/${total})`;
-
-  const list = document.getElementById('taskList');
-
-  if (filtered.length === 0) {
-    list.innerHTML = '<div class="task-count">' + (taskFilter === 'all' ? '还没有任务，添加一个吧' : '没有匹配的任务') + '</div>';
-    return;
-  }
-
-  list.innerHTML = filtered.map(t => {
-    const statusIcon = t.status === 'done' ? '&#x2713;' : t.status === 'in_progress' ? '&#x25D0;' : '';
-    const checkClass = t.status === 'done' ? 'done' : t.status === 'in_progress' ? 'in_progress' : 'pending';
-    const statusLabel = t.status === 'done' ? '已完成' : t.status === 'in_progress' ? '进行中' : '待办';
-    return `<div class="task-item">
-      <div class="task-check ${checkClass}" onclick="toggleTask('${t.id}')">${statusIcon}</div>
-      <div class="task-body">
-        <div class="task-title ${t.status === 'done' ? 'done' : ''}">${escapeHtml(t.title)}</div>
-        <div class="task-meta">${statusLabel}</div>
-      </div>
-      <button class="task-del" onclick="deleteTask('${t.id}')">&times;</button>
-    </div>`;
-  }).join('');
-}
-
-// ============ File Upload ============
-const fileInput = document.getElementById('fileInput');
-const attachBtn = document.getElementById('attachBtn');
-const fileChipsEl = document.getElementById('fileChips');
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-
-async function handleFile(file) {
-  if (file.size > MAX_FILE_SIZE) {
-    showToast('文件过大: ' + file.name + ' (最大 10MB)');
-    return;
-  }
-
-  const isImage = file.type.startsWith('image/');
-
-  if (isImage) {
-    if (!state.supportsVision) {
-      showToast('当前模型不支持图片识别: ' + file.name);
-      return;
-    }
-    try {
-      const dataUrl = await new Promise((resolve, reject) => {
-        const r = new FileReader();
-        r.onload = () => resolve(r.result);
-        r.onerror = reject;
-        r.readAsDataURL(file);
-      });
-      const base64 = dataUrl.split(',')[1];
-      const ext = file.name.split('.').pop() || '';
-      state.pendingFiles.push({
-        name: file.name, ext, size: file.size,
-        type: file.type,
-        data: base64, isImage: true
-      });
-    } catch (e) {
-      showToast('读取图片失败: ' + file.name);
-    }
-  } else {
-    try {
-      const content = await file.text();
-      const ext = file.name.split('.').pop() || '';
-      state.pendingFiles.push({
-        name: file.name, ext, content, size: file.size, isImage: false
-      });
-    } catch (e) {
-      showToast('不支持的文件格式: ' + file.name + ' (无法读取为文本)');
-    }
-  }
-}
-
-attachBtn.addEventListener('click', () => fileInput.click());
-
-fileInput.addEventListener('change', async () => {
-  const files = Array.from(fileInput.files);
-  fileInput.value = '';
-  for (const file of files) {
-    await handleFile(file);
-  }
-  renderFileChips();
-});
-
-function renderFileChips() {
-  const files = state.pendingFiles || [];
-  if (files.length === 0) { fileChipsEl.innerHTML = ''; return; }
-  fileChipsEl.innerHTML = files.map((f, i) =>
-    `<div class="file-chip">
-      <span class="icon">${f.isImage ? '&#x1F5BC;' : '&#x1F4C4;'}</span>
-      <span class="filename">${escapeHtml(f.name)}</span>
-      <span class="filesize">${(f.size / 1024).toFixed(1)}KB</span>
-      <button class="remove-file" onclick="removeFile(${i})">&times;</button>
-    </div>`
-  ).join('');
-}
-
-function removeFile(idx) {
-  state.pendingFiles.splice(idx, 1);
-  renderFileChips();
-}
+const state = { history:[], streaming:false, lastUserMsg:null, controller:null, pendingFiles:[], supportsVision:false, provider:'deepseek', model:'deepseek-chat', currentSessionId:null };
 
 function scrollToBottom() { chatEl.scrollTop = chatEl.scrollHeight; }
 
-function addUserMessage(text, files) {
-  welcomeEl.style.display = 'none';
-  state.lastUserMsg = text;
+// ============ Sidebar ============
+let sessions = [];
+function loadSessions() { try { sessions = JSON.parse(localStorage.getItem('claude-web-sessions')||'[]'); } catch(e){ sessions=[]; } }
+function saveSessions() { localStorage.setItem('claude-web-sessions', JSON.stringify(sessions)); }
 
-  const now = new Date();
-  const ts = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
-
-  const group = document.createElement('div');
-  group.className = 'msg-group user-group';
-  group.dataset.text = text;
-
-  let fileHtml = '';
-  if (files && files.length > 0) {
-    const chips = files.map(f => {
-      if (f.isImage) {
-        return `<div style="display:inline-block;margin:2px 4px 2px 0;border-radius:8px;overflow:hidden;border:1px solid var(--border);max-width:200px">
-          <img src="data:${f.type||'image/png'};base64,${escapeHtml(f.data)}" style="width:100%;display:block;max-height:120px;object-fit:cover" alt="${escapeHtml(f.name)}">
-          <div style="padding:2px 6px;font-size:11px;color:var(--text-muted);background:var(--bg)">${escapeHtml(f.name)}</div>
-        </div>`;
-      }
-      return `<div style="display:inline-flex;align-items:center;gap:4px;background:var(--file-chip-bg);border:1px solid var(--file-chip-border);border-radius:6px;padding:2px 8px;font-size:12px;color:var(--file-icon-color);margin:2px 4px 2px 0">&#x1F4C4; ${escapeHtml(f.name)}</div>`;
-    }).join('');
-    fileHtml = '<div style="margin-bottom:6px">' + chips + '</div>';
-  }
-
-  group.innerHTML = `
-    <div class="msg-header">
-      <div class="msg-avatar user">U</div>
-      <span class="msg-name">你</span>
-      <span class="msg-time">${ts}</span>
-      <div class="msg-actions">
-        <button class="msg-action-btn" onclick="editUserMessage(this)" title="编辑">&#x270E;</button>
-      </div>
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('hidden');
+  document.getElementById('sidebarToggle').classList.toggle('active');
+}
+function renderSidebar() {
+  loadSessions();
+  const list = document.getElementById('sessionList');
+  if (sessions.length===0) { list.innerHTML='<div class="sidebar-empty">暂无保存的对话</div>'; return; }
+  list.innerHTML = sessions.map(s => `
+    <div class="sidebar-item${state.currentSessionId===s.id?' active':''}" onclick="loadSession('${s.id}')">
+      <button class="del-session" onclick="event.stopPropagation();deleteSession('${s.id}')">&times;</button>
+      <div class="sidebar-item-title">${escapeHtml(s.title||'对话')}</div>
+      <div class="sidebar-item-meta">${s.count||0} 条消息 &middot; ${new Date(s.updated||s.created).toLocaleDateString()}</div>
     </div>
-    <div class="msg-content">${fileHtml}${escapeHtml(text)}</div>
-  `;
-
-  chatEl.appendChild(group);
-  scrollToBottom();
+  `).join('');
+}
+function newSession() {
+  state.history = []; state.currentSessionId = null; state.lastUserMsg = null;
+  document.querySelectorAll('.msg-group,.thinking').forEach(e=>e.remove());
+  welcomeEl.style.display = '';
+  renderSidebar();
+  showToast('新对话已创建');
+}
+function saveSession() {
+  if (state.history.length===0) { showToast('没有消息可保存'); return; }
+  loadSessions();
+  const firstMsg = state.history.find(m=>m.role==='user');
+  const title = firstMsg ? firstMsg.content.slice(0,30)+(firstMsg.content.length>30?'...':'') : '对话 '+new Date().toLocaleString();
+  const existing = state.currentSessionId ? sessions.findIndex(s=>s.id===state.currentSessionId) : -1;
+  if (existing>=0) {
+    sessions[existing] = {...sessions[existing], history:state.history, title, count:state.history.length, updated:new Date().toISOString()};
+  } else {
+    const ns = { id:Date.now().toString(36), title, history:[...state.history], count:state.history.length, created:new Date().toISOString(), updated:new Date().toISOString() };
+    sessions.unshift(ns);
+    state.currentSessionId = ns.id;
+  }
+  saveSessions(); renderSidebar(); showToast('对话已保存');
+}
+function loadSession(id) {
+  loadSessions();
+  const s = sessions.find(x=>x.id===id);
+  if (!s) return;
+  state.currentSessionId = id; state.history = s.history || [];
+  document.querySelectorAll('.msg-group,.thinking').forEach(e=>e.remove());
+  welcomeEl.style.display = 'none';
+  state.history.forEach((m,i)=>{
+    if (m.role==='user') {
+      addUserMessage(m.content, null);
+    } else {
+      const el = createAssistantMessage();
+      el.innerHTML = markdownToHtml(m.content);
+      el._fullText = m.content;
+    }
+  });
+  renderSidebar(); scrollToBottom();
+}
+function deleteSession(id) {
+  if (!confirm('删除此对话？')) return;
+  loadSessions(); sessions = sessions.filter(s=>s.id!==id); saveSessions();
+  if (state.currentSessionId===id) { state.currentSessionId=null; }
+  renderSidebar();
 }
 
-function createAssistantMessage() {
-  welcomeEl.style.display = 'none';
+// ============ Config ============
+async function loadConfig() {
+  try { const r=await fetch('/api/config'); const c=await r.json(); state.provider=c.provider; state.model=c.model; state.supportsVision=c.supportsVision; document.getElementById('modelBadge').textContent=c.model; document.getElementById('footerModel').textContent=c.model; if(c.supportsVision) document.getElementById('visionBadge').textContent='| 支持图片'; } catch(e){}
+}
+loadConfig();
+renderSidebar();
 
-  const now = new Date();
-  const ts = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+function getSettings() { try{return JSON.parse(localStorage.getItem('claude-web-settings')||'{}')}catch(e){return{}} }
+function saveSettingsToStorage(s){ localStorage.setItem('claude-web-settings',JSON.stringify(s)); }
+function loadSettingsIntoForm(){
+  const s=getSettings();
+  document.getElementById('cfgProvider').value=s.provider||'deepseek';
+  document.getElementById('cfgOpenaiKey').value=s.openaiKey||'';
+  document.getElementById('cfgModel').value=s.model||'';
+  document.getElementById('cfgBaseUrl').value=s.baseUrl||'';
+  document.getElementById('cfgMaxTokens').value=s.maxTokens||4096;
+  onProviderChange();
+}
+function onProviderChange(){
+  const p=document.getElementById('cfgProvider').value;
+  document.getElementById('cfgOpenaiGroup').style.display=p==='openai'?'block':'none';
+  const mi=document.getElementById('cfgModel'), bi=document.getElementById('cfgBaseUrl');
+  if(p==='openai'){ if(!mi.value||mi.value==='deepseek-chat')mi.value='gpt-4o'; if(!bi.value||bi.value.includes('deepseek'))bi.value='https://api.openai.com/v1'; }
+  else { if(!mi.value||mi.value==='gpt-4o')mi.value='deepseek-chat'; if(!bi.value||bi.value==='https://api.openai.com/v1')bi.value='https://api.deepseek.com/anthropic'; }
+}
+function openSettings(){ loadSettingsIntoForm(); document.getElementById('settingsModal').classList.add('show'); }
+function saveSettings(){
+  const s={provider:document.getElementById('cfgProvider').value,openaiKey:document.getElementById('cfgOpenaiKey').value,model:document.getElementById('cfgModel').value,baseUrl:document.getElementById('cfgBaseUrl').value,maxTokens:parseInt(document.getElementById('cfgMaxTokens').value)||4096};
+  saveSettingsToStorage(s);
+  state.provider=s.provider; state.model=s.model||(s.provider==='openai'?'gpt-4o':'deepseek-chat');
+  state.supportsVision=s.provider==='openai';
+  document.getElementById('modelBadge').textContent=state.model; document.getElementById('footerModel').textContent=state.model;
+  document.getElementById('visionBadge').textContent=state.supportsVision?'| 支持图片':'';
+  const st=document.getElementById('cfgStatus');
+  st.textContent='✅ 已保存: '+(s.provider==='openai'?'OpenAI '+(s.model||'gpt-4o'):'DeepSeek '+(s.model||'deepseek-chat'));
+  st.className='status-badge'+(s.provider==='openai'&&!s.openaiKey?' warn':' ok');
+  if(s.provider==='openai'&&!s.openaiKey) st.textContent='⚠️ 已保存但未填 OpenAI Key';
+  closeModal('settingsModal'); showToast('设置已保存');
+}
+function getApiConfig(){
+  const s=getSettings();
+  return {provider:s.provider||state.provider||'deepseek',model:s.model||state.model||'deepseek-chat',baseUrl:s.baseUrl||'',openaiKey:s.openaiKey||'',maxTokens:s.maxTokens||4096};
+}
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
 
-  const group = document.createElement('div');
-  group.className = 'msg-group assistant-group';
-  group.id = 'last-assistant';
-
-  group.innerHTML = `
-    <div class="msg-header">
-      <div class="msg-avatar assistant">C</div>
-      <span class="msg-name">Claude</span>
-      <span class="msg-time">${ts}</span>
-      <div class="msg-actions">
-        <button class="msg-action-btn" onclick="copyMessage(this)" title="复制">&#x1F4CB;</button>
-        <button class="msg-action-btn" onclick="regenerate()" title="重新生成">&#x21BB;</button>
-      </div>
+// ============ Models ============
+function openModels(){
+  document.getElementById('modelsContent').innerHTML = `
+    <div class="model-info-card">
+      <div class="row"><span class="label">当前提供商</span><span class="value">${state.provider}</span></div>
+      <div class="row"><span class="label">当前模型</span><span class="value">${state.model}</span></div>
+      <div class="row"><span class="label">支持图片</span><span class="value">${state.supportsVision?'✅ 是':'❌ 否'}</span></div>
+      <div class="row"><span class="label">流式输出</span><span class="value">✅ 是</span></div>
+      <div class="row"><span class="label">最大 Token</span><span class="value">${getApiConfig().maxTokens}</span></div>
     </div>
-    <div class="msg-content stream-cursor"></div>
+    <div class="modal-actions"><button class="btn-primary btn-sm" onclick="closeModal('modelsModal');openSettings()">&#x2699; 修改设置</button></div>
   `;
-
-  chatEl.appendChild(group);
-  scrollToBottom();
-  return group.querySelector('.msg-content');
+  document.getElementById('modelsModal').classList.add('show');
 }
 
-function appendToMessage(el, text) {
-  // Remove stream cursor class once we have content
-  if (el.textContent === '' && text.length > 0) {
-    el.classList.remove('stream-cursor');
-  }
-
-  // Parse accumulated content as markdown
-  const fullText = (el._fullText || '') + text;
-  el._fullText = fullText;
-
-  // Re-render full markdown for proper formatting
-  const html = markdownToHtml(fullText) + '<span class="stream-cursor"></span>';
-  el.innerHTML = html;
-  scrollToBottom();
+// ============ Logs ============
+async function openLogs(){
+  document.getElementById('logsModal').classList.add('show');
+  document.getElementById('logViewer').innerHTML = '<div class="task-count">加载中...</div>';
+  refreshLogs();
 }
-
-function finalizeMessage(el) {
-  el.classList.remove('stream-cursor');
-  if (el._fullText) {
-    el.innerHTML = markdownToHtml(el._fullText);
-  }
-  scrollToBottom();
-}
-
-function removeLastAssistant() {
-  const el = document.getElementById('last-assistant');
-  if (el) el.remove();
-}
-
-function showThinking() {
-  welcomeEl.style.display = 'none';
-  const div = document.createElement('div');
-  div.className = 'thinking';
-  div.id = 'thinking-indicator';
-  div.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>Claude 正在思考...';
-  chatEl.appendChild(div);
-  scrollToBottom();
-}
-
-function hideThinking() {
-  const el = document.getElementById('thinking-indicator');
-  if (el) el.remove();
-}
-
-// ============ Streaming ============
-async function sendMessageStream(messages, files) {
-  const contentEl = createAssistantMessage();
-  state.streaming = true;
-
+async function refreshLogs(){
+  const viewer = document.getElementById('logViewer');
+  viewer.innerHTML = '<div class="task-count">加载中...</div>';
   try {
-    const res = await fetch('/api/chat/stream', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages, files, config: getApiConfig() }),
-    });
-
-    if (!res.ok) {
-      contentEl.textContent = '错误: 请求失败 (' + res.status + ')';
-      contentEl.classList.add('error');
-      contentEl.classList.remove('stream-cursor');
-      state.streaming = false;
-      return '';
-    }
-
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let fullText = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        if (line.startsWith('event: token')) {
-          continue; // event name on its own line
-        }
-        if (line.startsWith('event: done')) {
-          continue;
-        }
-        if (line.startsWith('event: error')) {
-          continue;
-        }
-        if (line.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(line.slice(6));
-            if (data.text) {
-              fullText += data.text;
-              appendToMessage(contentEl, data.text);
-            }
-          } catch(e) {}
-        }
-      }
-    }
-
-    // Handle remaining buffer
-    if (buffer.startsWith('data: ')) {
+    // Try to read claude-web logs
+    const logFiles = ['/tmp/claude-web-stdout.log','/tmp/claude-web-stderr.log','/tmp/tg-bridge.log'];
+    let allLogs = '';
+    for (const f of logFiles) {
       try {
-        const data = JSON.parse(buffer.slice(6));
-        if (data.text) {
-          fullText += data.text;
-          appendToMessage(contentEl, data.text);
+        const r = await fetch('/api/log?file='+encodeURIComponent(f));
+        if (r.ok) {
+          const data = await r.json();
+          if (data.content) allLogs += '--- '+f+' ---\n'+data.content.slice(-3000)+'\n\n';
         }
       } catch(e) {}
     }
-
-    finalizeMessage(contentEl);
-    state.streaming = false;
-    return fullText;
-
-  } catch (err) {
-    contentEl.textContent = '网络错误: ' + err.message;
-    contentEl.classList.add('error');
-    contentEl.classList.remove('stream-cursor');
-    state.streaming = false;
-    return '';
+    if (allLogs) {
+      viewer.innerHTML = '<div class="task-count">最近日志 (显示末尾 3000 字符)</div>'+escapeHtml(allLogs);
+    } else {
+      viewer.innerHTML = '<div class="task-count">暂无日志</div>';
+    }
+  } catch(e) {
+    viewer.innerHTML = '<div class="task-count">加载失败: '+e.message+'</div>';
   }
+}
+
+// ============ Cron ============
+let cronJobs = [];
+function loadCron() { try{ cronJobs=JSON.parse(localStorage.getItem('claude-web-cron')||'[]') }catch(e){cronJobs=[]} }
+function saveCron() { localStorage.setItem('claude-web-cron',JSON.stringify(cronJobs)); }
+function openCron(){
+  loadCron(); renderCron();
+  document.getElementById('cronModal').classList.add('show');
+}
+function addCronJob(){
+  const title=document.getElementById('cronTitle').value.trim();
+  const schedule=document.getElementById('cronSchedule').value.trim();
+  const prompt=document.getElementById('cronPrompt').value.trim();
+  if(!title||!schedule){ showToast('请填写任务说明和 cron 表达式'); return; }
+  cronJobs.push({id:Date.now().toString(36),title,schedule,prompt,enabled:true,created:new Date().toISOString()});
+  saveCron(); renderCron();
+  document.getElementById('cronTitle').value=''; document.getElementById('cronSchedule').value=''; document.getElementById('cronPrompt').value='';
+  showToast('定时任务已添加');
+}
+function toggleCron(id){
+  const j=cronJobs.find(c=>c.id===id); if(j) j.enabled=!j.enabled; saveCron(); renderCron();
+}
+function deleteCron(id){
+  cronJobs=cronJobs.filter(c=>c.id!==id); saveCron(); renderCron();
+}
+function renderCron(){
+  loadCron();
+  document.getElementById('cronList').innerHTML = cronJobs.length===0
+    ? '<div class="task-count">暂无定时任务</div>'
+    : cronJobs.map(j=>`<div class="cron-item">
+      <button class="cron-toggle${j.enabled?' on':''}" onclick="toggleCron('${j.id}')"></button>
+      <div class="cron-body">
+        <div class="cron-title">${escapeHtml(j.title)}</div>
+        <div class="cron-schedule">${escapeHtml(j.schedule)}</div>
+        ${j.prompt?'<div class="cron-desc">'+escapeHtml(j.prompt.slice(0,80))+'</div>':''}
+      </div>
+      <button class="cron-del" onclick="deleteCron('${j.id}')">&times;</button>
+    </div>`).join('');
+}
+
+// ============ Tasks ============
+let tasks = []; let taskFilter = 'all';
+function loadTasks(){ try{ tasks=JSON.parse(localStorage.getItem('claude-web-tasks')||'[]') }catch(e){tasks=[]} }
+function saveTasks(){ localStorage.setItem('claude-web-tasks',JSON.stringify(tasks)); }
+function openTasks(){ loadTasks(); renderTasks(); document.getElementById('tasksModal').classList.add('show'); setTimeout(()=>document.getElementById('taskInput').focus(),100); }
+function addTask(){
+  const inp=document.getElementById('taskInput'); const t=inp.value.trim();
+  if(!t) return;
+  tasks.push({id:Date.now().toString(36),title:t,status:'pending',createdAt:new Date().toISOString()});
+  saveTasks(); inp.value=''; renderTasks(); inp.focus();
+}
+function toggleTask(id){
+  const t=tasks.find(x=>x.id===id); if(!t) return;
+  if(t.status==='done') t.status='pending'; else if(t.status==='pending') t.status='in_progress'; else t.status='done';
+  saveTasks(); renderTasks();
+}
+function deleteTask(id){ tasks=tasks.filter(t=>t.id!==id); saveTasks(); renderTasks(); }
+function setTaskFilter(f){
+  taskFilter=f;
+  document.querySelectorAll('.task-filter').forEach(b=>b.classList.toggle('active',b.dataset.filter===f));
+  renderTasks();
+}
+function renderTasks(){
+  const f=taskFilter==='all'?tasks:tasks.filter(t=>t.status===taskFilter);
+  const total=tasks.length, done=tasks.filter(t=>t.status==='done').length;
+  document.getElementById('taskStatusCount').textContent=`(${done}/${total})`;
+  document.getElementById('taskList').innerHTML = f.length===0
+    ? '<div class="task-count">'+(taskFilter==='all'?'还没有任务':'没有匹配的任务')+'</div>'
+    : f.map(t=>`<div class="task-item">
+      <div class="task-check ${t.status==='done'?'done':t.status==='in_progress'?'in_progress':'pending'}" onclick="toggleTask('${t.id}')">${t.status==='done'?'✓':t.status==='in_progress'?'▐':''}</div>
+      <div class="task-body"><div class="task-title${t.status==='done'?' done':''}">${escapeHtml(t.title)}</div><div class="task-meta">${t.status==='done'?'已完成':t.status==='in_progress'?'进行中':'待办'}</div></div>
+      <button class="task-del" onclick="deleteTask('${t.id}')">&times;</button>
+    </div>`).join('');
+}
+
+// ============ Skills ============
+let skillsData = []; let userSkills = [];
+function loadUserSkills(){ try{userSkills=JSON.parse(localStorage.getItem('claude-web-user-skills')||'[]')}catch(e){userSkills=[]} }
+function saveUserSkills(){ localStorage.setItem('claude-web-user-skills',JSON.stringify(userSkills)); }
+async function openSkills(){
+  document.getElementById('skillsSearch').value='';
+  document.getElementById('skillsModal').classList.add('show');
+  try{const r=await fetch('/api/skills');const d=await r.json();skillsData=d.skills||[]}catch(e){skillsData=[]}
+  loadUserSkills(); renderSkills();
+}
+function renderSkills(){
+  const q=(document.getElementById('skillsSearch').value||'').toLowerCase();
+  const all=[...skillsData.map(s=>({...s,_user:false})),...userSkills.map(s=>({...s,_user:true}))];
+  const f=q?all.filter(s=>s.name?.toLowerCase().includes(q)||s.description?.toLowerCase().includes(q)||s.category?.toLowerCase().includes(q)):all;
+  const c=document.getElementById('skillsContent');
+  if(f.length===0){c.innerHTML='<div class="skills-empty">没有匹配的技能</div>';return;}
+  c.innerHTML = `<div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn-primary btn-sm" onclick="addUserSkill()">&#x2795; 新建技能</button></div>
+    <div class="skills-grid">${f.map(s=>`<div class="skill-card" onclick="viewSkill('${s._user?'user':s.category}','${(s.name||'').replace(/'/g,"\\'")}')">
+      <div class="skill-cat">${s._user?'自定义':(s.category||'')}</div>
+      <div class="skill-name">${escapeHtml(s.name)}${s._user?' <span style="color:var(--accent);font-size:11px">&#9998;</span>':''}</div>
+      <div class="skill-desc">${escapeHtml((s.description||'').slice(0,80))}</div>
+    </div>`).join('')}</div>`;
+}
+async function viewSkill(src,name){
+  const c=document.getElementById('skillsContent');
+  if(src==='user'){ const sk=userSkills.find(s=>s.name===name); if(!sk) return; c.innerHTML=`<button class="skill-back" onclick="renderSkills()">&#x2190; 返回</button>
+    <div class="skill-detail"><h3>${escapeHtml(sk.name)}</h3><pre>${escapeHtml(sk.body||'')}</pre>
+    <div style="margin-top:12px;display:flex;gap:8px">
+      <button class="btn-primary btn-sm" onclick="applySkill('${escapeHtml(sk.body||'').replace(/'/g,"\\'")}')">&#x1F4CB; 使用</button>
+      <button class="btn-secondary btn-sm" onclick="editUserSkill('${(sk.name||'').replace(/'/g,"\\'")}')">&#x270E; 编辑</button>
+      <button class="btn-secondary btn-sm" style="color:var(--danger)" onclick="deleteUserSkill('${(sk.name||'').replace(/'/g,"\\'")}')">&#x1F5D1; 删除</button>
+    </div></div>`; return;
+  }
+  try{const r=await fetch(`/api/skills/${src}/${name}`);if(!r.ok)throw Error();const d=await r.json();
+    c.innerHTML=`<button class="skill-back" onclick="renderSkills()">&#x2190; 返回</button>
+    <div class="skill-detail"><h3>${escapeHtml(d.meta?.name||name)}</h3><pre>${escapeHtml(d.body||'')}</pre>
+    <div style="margin-top:12px"><button class="btn-primary btn-sm" onclick="applySkill('${escapeHtml(d.body||'').replace(/'/g,"\\'")}')">&#x1F4CB; 使用</button></div></div>`;
+  }catch(e){c.innerHTML='<div class="skills-empty">加载失败</div>';}
+}
+function applySkill(b){ inputEl.value=b; inputEl.dispatchEvent(new Event('input')); closeModal('skillsModal'); inputEl.focus(); }
+function addUserSkill(){
+  const n=prompt('技能名称:'); if(!n)return;
+  const d=prompt('技能描述:')||''; const b=prompt('技能内容:')||'';
+  if(!b)return; userSkills.push({name:n,description:d,body:b,category:'user',_user:true}); saveUserSkills(); renderSkills();
+}
+function deleteUserSkill(n){ if(!confirm('删除 "'+n+'"？'))return; userSkills=userSkills.filter(s=>s.name!==n); saveUserSkills(); renderSkills(); }
+function editUserSkill(n){
+  const s=userSkills.find(x=>x.name===n); if(!s)return;
+  s.name=prompt('名称:',s.name)||s.name; s.description=prompt('描述:',s.description||'')||''; s.body=prompt('内容:',s.body||'')||'';
+  saveUserSkills(); viewSkill('user',s.name);
+}
+
+// ============ File Upload ============
+const fileInput=document.getElementById('fileInput'),attachBtn=document.getElementById('attachBtn'),fileChipsEl=document.getElementById('fileChips');
+const MAX_FILE_SIZE=10*1024*1024;
+async function handleFile(file){
+  if(file.size>MAX_FILE_SIZE){showToast('文件过大: '+file.name);return;}
+  const isImage=file.type.startsWith('image/');
+  if(isImage&&!state.supportsVision){showToast('当前模型不支持图片: '+file.name);return;}
+  try{
+    if(isImage){
+      const d=await new Promise((r,rej)=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.onerror=rej;fr.readAsDataURL(file);});
+      state.pendingFiles.push({name:file.name,ext:file.name.split('.').pop()||'',size:file.size,type:file.type,data:d.split(',')[1],isImage:true});
+    } else {
+      state.pendingFiles.push({name:file.name,ext:file.name.split('.').pop()||'',content:await file.text(),size:file.size,isImage:false});
+    }
+  }catch(e){showToast('读取失败: '+file.name);}
+}
+attachBtn.addEventListener('click',()=>fileInput.click());
+fileInput.addEventListener('change',async()=>{const f=Array.from(fileInput.files);fileInput.value='';for(const x of f)await handleFile(x);renderFileChips();});
+function renderFileChips(){
+  const f=state.pendingFiles||[];
+  fileChipsEl.innerHTML=f.length===0?'':f.map((x,i)=>`<div class="file-chip"><span class="icon">${x.isImage?'🖼':'📄'}</span><span class="filename">${escapeHtml(x.name)}</span><span class="filesize">${(x.size/1024).toFixed(1)}KB</span><button class="remove-file" onclick="removeFile(${i})">&times;</button></div>`).join('');
+}
+function removeFile(i){state.pendingFiles.splice(i,1);renderFileChips();}
+
+// ============ Messages ============
+function addUserMessage(text,files){
+  welcomeEl.style.display='none'; state.lastUserMsg=text;
+  const ts=new Date(); const t=String(ts.getHours()).padStart(2,'0')+':'+String(ts.getMinutes()).padStart(2,'0');
+  const g=document.createElement('div'); g.className='msg-group user-group'; g.dataset.text=text;
+  let fh='';
+  if(files&&files.length){
+    fh='<div style="margin-bottom:6px">'+files.map(f=>f.isImage
+      ?`<div style="display:inline-block;margin:2px 4px 2px 0;border-radius:8px;overflow:hidden;border:1px solid var(--border);max-width:200px"><img src="data:${f.type||'image/png'};base64,${escapeHtml(f.data)}" style="width:100%;display:block;max-height:120px;object-fit:cover" alt="${escapeHtml(f.name)}"><div style="padding:2px 6px;font-size:11px;color:var(--text-muted);background:var(--bg)">${escapeHtml(f.name)}</div></div>`
+      :`<div style="display:inline-flex;align-items:center;gap:4px;background:var(--file-chip-bg);border:1px solid var(--file-chip-border);border-radius:6px;padding:2px 8px;font-size:12px;color:var(--file-icon-color);margin:2px 4px 2px 0">&#x1F4C4; ${escapeHtml(f.name)}</div>`).join('')+'</div>';
+  }
+  g.innerHTML=`<div class="msg-header"><div class="msg-avatar user">U</div><span class="msg-name">你</span><span class="msg-time">${t}</span><div class="msg-actions"><button class="msg-action-btn" onclick="editUserMessage(this)" title="编辑">&#x270E;</button></div></div><div class="msg-content">${fh}${escapeHtml(text)}</div>`;
+  chatEl.appendChild(g); scrollToBottom();
+}
+function createAssistantMessage(){
+  welcomeEl.style.display='none';
+  const ts=new Date(); const t=String(ts.getHours()).padStart(2,'0')+':'+String(ts.getMinutes()).padStart(2,'0');
+  const g=document.createElement('div'); g.className='msg-group assistant-group'; g.id='last-assistant';
+  g.innerHTML=`<div class="msg-header"><div class="msg-avatar assistant">C</div><span class="msg-name">Claude</span><span class="msg-time">${t}</span><div class="msg-actions"><button class="msg-action-btn" onclick="copyMessage(this)" title="复制">&#x1F4CB;</button><button class="msg-action-btn" onclick="regenerate()" title="重新生成">&#x21BB;</button></div></div><div class="msg-content stream-cursor"></div>`;
+  chatEl.appendChild(g); scrollToBottom(); return g.querySelector('.msg-content');
+}
+function appendToMessage(el,text){
+  if(el.textContent===''&&text.length>0) el.classList.remove('stream-cursor');
+  const ft=(el._fullText||'')+text; el._fullText=ft;
+  el.innerHTML=markdownToHtml(ft)+'<span class="stream-cursor"></span>'; scrollToBottom();
+}
+function finalizeMessage(el){ el.classList.remove('stream-cursor'); if(el._fullText) el.innerHTML=markdownToHtml(el._fullText); scrollToBottom(); }
+function removeLastAssistant(){ const e=document.getElementById('last-assistant'); if(e) e.remove(); }
+function showThinking(){ welcomeEl.style.display='none'; const d=document.createElement('div'); d.className='thinking'; d.id='thinking-indicator'; d.innerHTML='<div class="typing-dots"><span></span><span></span><span></span></div>Claude 正在思考...'; chatEl.appendChild(d); scrollToBottom(); }
+function hideThinking(){ const e=document.getElementById('thinking-indicator'); if(e) e.remove(); }
+
+async function sendMessageStream(messages,files){
+  const el=createAssistantMessage(); state.streaming=true;
+  try{
+    const r=await fetch('/api/chat/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages,files,config:getApiConfig()})});
+    if(!r.ok){el.textContent='错误: 请求失败 ('+r.status+')';el.classList.add('error');el.classList.remove('stream-cursor');state.streaming=false;return '';}
+    const reader=r.body.getReader(); const dec=new TextDecoder(); let buf='',full='';
+    while(true){
+      const{done,value}=await reader.read(); if(done) break;
+      buf+=dec.decode(value,{stream:true}); const lines=buf.split('\n'); buf=lines.pop()||'';
+      for(const l of lines){
+        if(l.startsWith('event:')) continue;
+        if(l.startsWith('data:')) try{const d=JSON.parse(l.slice(6));if(d.text){full+=d.text;appendToMessage(el,d.text);}}catch(e){}
+      }
+    }
+    if(buf.startsWith('data:')) try{const d=JSON.parse(buf.slice(6));if(d.text){full+=d.text;appendToMessage(el,d.text);}}catch(e){}
+    finalizeMessage(el); state.streaming=false; return full;
+  }catch(err){el.textContent='网络错误: '+err.message;el.classList.add('error');el.classList.remove('stream-cursor');state.streaming=false;return '';}
 }
 
 // ============ Actions ============
-function editUserMessage(btn) {
-  if (state.streaming) return;
-  const group = btn.closest('.msg-group');
-  const content = group.querySelector('.msg-content');
-  const text = group.dataset.text;
-  inputEl.value = text;
-  inputEl.focus();
-  inputEl.setSelectionRange(text.length, text.length);
-  inputEl.dispatchEvent(new Event('input'));
-  // Remove this and subsequent messages
-  let el = group.nextElementSibling;
-  while (el) {
-    const next = el.nextElementSibling;
-    el.remove();
-    el = next;
-  }
-  // Pop history back to this message
-  const idx = state.history.findIndex(m => m.role === 'user' && m.content === text);
-  if (idx >= 0) {
-    state.history.length = idx;
-  } else {
-    // Also try to remove the last user message in history
-    const lastUser = [...state.history].reverse().findIndex(m => m.role === 'user');
-    if (lastUser >= 0) state.history.splice(state.history.length - 1 - lastUser, 1);
-  }
-  // Remove any thinking indicator
+function editUserMessage(btn){
+  if(state.streaming)return;
+  const g=btn.closest('.msg-group'),c=g.querySelector('.msg-content'),t=g.dataset.text;
+  inputEl.value=t; inputEl.focus(); inputEl.setSelectionRange(t.length,t.length); inputEl.dispatchEvent(new Event('input'));
+  let e=g.nextElementSibling; while(e){const n=e.nextElementSibling;e.remove();e=n;}
+  const idx=state.history.findIndex(m=>m.role==='user'&&m.content===t);
+  if(idx>=0) state.history.length=idx; else{const lu=[...state.history].reverse().findIndex(m=>m.role==='user');if(lu>=0)state.history.splice(state.history.length-1-lu,1);}
   hideThinking();
 }
-
-function copyMessage(btn) {
-  const group = btn.closest('.msg-group');
-  const content = group.querySelector('.msg-content');
-  const text = content._fullText || content.textContent;
-  navigator.clipboard.writeText(text);
-  showToast('已复制到剪贴板');
+function copyMessage(btn){
+  const g=btn.closest('.msg-group'),c=g.querySelector('.msg-content');
+  navigator.clipboard.writeText(c._fullText||c.textContent); showToast('已复制');
 }
-
-function copyCodeBlock(btn) {
-  const pre = btn.closest('pre');
-  const code = pre.querySelector('code');
-  // Get raw text without HTML tags
-  const text = code.textContent;
-  navigator.clipboard.writeText(text);
-  btn.textContent = '已复制';
-  setTimeout(() => { btn.textContent = '复制'; }, 2000);
+function copyCodeBlock(btn){const c=btn.closest('pre').querySelector('code');navigator.clipboard.writeText(c.textContent);btn.textContent='已复制';setTimeout(()=>{btn.textContent='复制'},2000);}
+function clearChat(){
+  if(state.history.length===0&&!document.querySelector('.msg-group'))return;
+  if(!confirm('确定开始新对话？'))return;
+  state.history.length=0; state.lastUserMsg=null; state.pendingFiles=[]; state.currentSessionId=null;
+  renderFileChips(); document.querySelectorAll('.msg-group,.thinking').forEach(e=>e.remove()); welcomeEl.style.display=''; inputEl.focus();
 }
-
-function clearChat() {
-  if (state.history.length === 0 && !document.querySelector('.msg-group')) return;
-  if (!confirm('确定开始新对话？')) return;
-  state.history.length = 0;
-  state.lastUserMsg = null;
-  state.pendingFiles = [];
-  renderFileChips();
-  document.querySelectorAll('.msg-group, .thinking').forEach(el => el.remove());
-  welcomeEl.style.display = '';
-  inputEl.focus();
-}
-
-async function regenerate() {
-  if (state.streaming || !state.lastUserMsg) return;
-  // Remove the last assistant message
+async function regenerate(){
+  if(state.streaming||!state.lastUserMsg)return;
   removeLastAssistant();
-  // Pop the last assistant from history
-  if (state.history.length > 0 && state.history[state.history.length - 1].role === 'assistant') {
-    state.history.pop();
-  }
-  // Re-send
-  state.history.push({ role: 'user', content: state.lastUserMsg });
-  const reply = await sendMessageStream(state.history, []);
-  if (reply) {
-    state.history.push({ role: 'assistant', content: reply });
-  }
+  if(state.history.length>0&&state.history[state.history.length-1].role==='assistant') state.history.pop();
+  state.history.push({role:'user',content:state.lastUserMsg});
+  const r=await sendMessageStream(state.history,[]); if(r) state.history.push({role:'assistant',content:r});
 }
 
 // ============ Input ============
-function autoResize() {
-  inputEl.style.height = 'auto';
-  inputEl.style.height = Math.min(inputEl.scrollHeight, 200) + 'px';
-}
+function autoResize(){inputEl.style.height='auto';inputEl.style.height=Math.min(inputEl.scrollHeight,200)+'px';}
+inputEl.addEventListener('input',()=>{sendBtn.disabled=!inputEl.value.trim()&&state.pendingFiles.length===0;autoResize();});
+inputEl.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}});
+sendBtn.addEventListener('click',sendMessage);
+function suggest(t){inputEl.value=t;inputEl.dispatchEvent(new Event('input'));sendMessage();}
 
-inputEl.addEventListener('input', () => {
-  sendBtn.disabled = !inputEl.value.trim();
-  autoResize();
-});
-inputEl.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
+async function sendMessage(){
+  if(state.streaming)return;
+  const text=inputEl.value.trim(); const files=state.pendingFiles||[];
+  if(!text&&files.length===0)return;
+  inputEl.value=''; sendBtn.disabled=true; autoResize();
+
+  let userContent=text;
+  const nonImg=files.filter(f=>!f.isImage), imgFiles=files.filter(f=>f.isImage);
+  if(nonImg.length>0){
+    const blocks=nonImg.map(f=>'```'+f.ext+'\n// File: '+f.name+'\n'+f.content+'\n```').join('\n\n');
+    userContent=text?'上传了文件：\n'+blocks+'\n\n用户说：'+text:'请分析以下文件：\n'+blocks;
   }
-});
-sendBtn.addEventListener('click', sendMessage);
-
-function suggest(text) {
-  inputEl.value = text;
-  inputEl.dispatchEvent(new Event('input'));
-  sendMessage();
-}
-
-async function sendMessage() {
-  if (state.streaming) return;
-  const text = inputEl.value.trim();
-  const files = state.pendingFiles || [];
-  if (!text && files.length === 0) return;
-
-  inputEl.value = '';
-  sendBtn.disabled = true;
-  autoResize();
-
-  // Build message with file contents
-  let userContent = text;
-  const nonImageFiles = files.filter(f => !f.isImage);
-  const imageFiles = files.filter(f => f.isImage);
-
-  if (nonImageFiles.length > 0) {
-    const fileBlocks = nonImageFiles.map(f =>
-      `\`\`\`${f.ext}\n// File: ${f.name}\n${f.content}\n\`\`\``
-    ).join('\n\n');
-    userContent = text
-      ? `用户上传了以下文件：\n${fileBlocks}\n\n用户说：${text}`
-      : `请分析以下文件：\n${fileBlocks}`;
-  }
-
-  // Store files for API call
-  const apiFiles = files.length > 0 ? files.map(f => ({
-    name: f.name, ext: f.ext, content: f.content,
-    type: f.type || '', data: f.data || '', isImage: f.isImage || false
-  })) : [];
-
-  state.pendingFiles = [];
-  renderFileChips();
-
-  addUserMessage(userContent, files);
-  state.history.push({ role: 'user', content: userContent });
-
+  const apiFiles=files.map(f=>({name:f.name,ext:f.ext,content:f.content,type:f.type||'',data:f.data||'',isImage:f.isImage||false}));
+  state.pendingFiles=[]; renderFileChips();
+  addUserMessage(userContent,files); state.history.push({role:'user',content:userContent});
   hideThinking();
-  const reply = await sendMessageStream(state.history, apiFiles);
-  if (reply) {
-    state.history.push({ role: 'assistant', content: reply });
-  }
+  const reply=await sendMessageStream(state.history,apiFiles);
+  if(reply) state.history.push({role:'assistant',content:reply});
 }
 
 // ============ Drag & Drop ============
-const dropOverlay = document.getElementById('dropOverlay');
-let dropTimer = null;
-
-document.addEventListener('dragenter', (e) => {
-  e.preventDefault();
-  clearTimeout(dropTimer);
-  dropOverlay.classList.add('show');
-});
-document.addEventListener('dragover', (e) => e.preventDefault());
-document.addEventListener('dragleave', (e) => {
-  if (e.target === document) {
-    dropOverlay.classList.remove('show');
-  }
-});
-document.addEventListener('drop', async (e) => {
-  e.preventDefault();
-  dropOverlay.classList.remove('show');
-  const files = Array.from(e.dataTransfer.files);
-  for (const file of files) {
-    await handleFile(file);
-  }
-  renderFileChips();
-});
-
+const dropOverlay=document.getElementById('dropOverlay');
+document.addEventListener('dragenter',e=>{e.preventDefault();clearTimeout();dropOverlay.classList.add('show')});
+document.addEventListener('dragover',e=>e.preventDefault());
+document.addEventListener('dragleave',e=>{if(e.target===document)dropOverlay.classList.remove('show')});
+document.addEventListener('drop',async e=>{e.preventDefault();dropOverlay.classList.remove('show');const f=Array.from(e.dataTransfer.files);for(const x of f)await handleFile(x);renderFileChips();});
 inputEl.focus();
 </script>
 </body>
