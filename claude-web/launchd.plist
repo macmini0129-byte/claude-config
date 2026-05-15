@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.user.claude-web</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/node</string>
+        <string>/Users/qclaw/claude-web/server.js</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>WorkingDirectory</key>
+    <string>/Users/qclaw/claude-web</string>
+    <key>StandardOutPath</key>
+    <string>/tmp/claude-web-stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/claude-web-stderr.log</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Users/qclaw/.npm-global/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>HOME</key>
+        <string>/Users/qclaw</string>
+        <key>ANTHROPIC_AUTH_TOKEN</key>
+        <string>__FILL_IN__</string>
+        <key>ANTHROPIC_BASE_URL</key>
+        <string>https://api.deepseek.com/anthropic</string>
+        <key>ANTHROPIC_MODEL</key>
+        <string>deepseek-chat</string>
+        <key>PORT</key>
+        <string>3000</string>
+    </dict>
+</dict>
+</plist>

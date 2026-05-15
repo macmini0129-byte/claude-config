@@ -14,6 +14,11 @@ claude-config/
 │   └── settings.json      # Claude Code 全局设置
 ├── openclaw/
 │   └── openclaw.json      # OpenClaw 网关配置
+├── claude-web/
+│   ├── server.js          # Web 聊天面板服务端
+│   ├── index.html         # 聊天 UI (模仿 claude.ai)
+│   ├── package.json       # Node.js 依赖
+│   └── launchd.plist      # macOS 自启配置
 ├── memory/
 │   └── telegram-bridge.md # 桥接记忆文件
 └── .env.example           # 环境变量模板
